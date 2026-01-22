@@ -1,3 +1,76 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "chicken-1",
+      "description": "Healthy broiler chickens in a clean coop",
+      "imageUrl": "https://images.unsplash.com/photo-1753168521124-a6bab276aeed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxicm9pbGVyJTIwY2hpY2tlbnN8ZW58MHx8fHwxNzY5MDkxNjU3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "broiler chickens"
+    },
+    {
+      "id": "chicken-2",
+      "description": "Close up of a white broiler chicken",
+      "imageUrl": "https://images.unsplash.com/photo-1685978768295-e6ee5290443f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx3aGl0ZSUyMGNoaWNrZW58ZW58MHx8fHwxNzY5MDkxNjU3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "white chicken"
+    },
+    {
+      "id": "chicken-3",
+      "description": "A flock of chickens on a farm",
+      "imageUrl": "https://images.unsplash.com/photo-1569466593977-94ee7ed02ec9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxjaGlja2VuJTIwZmFybXxlbnwwfHx8fDE3NjkwOTAxMjN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "chicken farm"
+    },
+    {
+      "id": "chicken-4",
+      "description": "Broiler chickens feeding",
+      "imageUrl": "https://images.unsplash.com/photo-1660085693363-5d6b3f459302?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxjaGlja2VucyUyMGZlZWRpbmd8ZW58MHx8fHwxNzY5MDkxNjU3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "chickens feeding"
+    },
+    {
+      "id": "chicken-5",
+      "description": "A farmer holding a healthy chicken",
+      "imageUrl": "https://images.unsplash.com/photo-1740224476982-189eb6f180dc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxmYXJtZXIlMjBjaGlja2VufGVufDB8fHx8MTc2OTA5MTY1N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "farmer chicken"
+    },
+    {
+      "id": "chicken-6",
+      "description": "Free-range chickens in a field",
+      "imageUrl": "https://images.unsplash.com/photo-1715034351470-61f21a4357c0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxmcmVlLXJhbmdlJTIwY2hpY2tlbnN8ZW58MHx8fHwxNzY5MDkxNjU3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "free-range chickens"
+    },
+    {
+      "id": "chicken-7",
+      "description": "Day-old chicks under a heat lamp",
+      "imageUrl": "https://images.unsplash.com/photo-1546833629-86e5534d5496?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxjaGlja3N8ZW58MHx8fHwxNzY5MDkxNjU3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "chicks"
+    },
+    {
+      "id": "chicken-8",
+      "description": "A modern chicken poultry house",
+      "imageUrl": "https://images.unsplash.com/photo-1604953302215-8a223b26cea6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwb3VsdHJ5JTIwaG91c2V8ZW58MHx8fHwxNzY5MDU3NjU5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "poultry house"
+    },
+    {
+      "id": "user-1",
+      "description": "Profile picture for a user",
+      "imageUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjkwNzc4MDh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "user-2",
+      "description": "Profile picture for another user",
+      "imageUrl": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTc2OTAwMzgxMHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "user-3",
+      "description": "Profile picture for a third user",
+      "imageUrl": "https://images.unsplash.com/photo-1633367583895-08545d733dfe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxtYW4lMjBzbWlsaW5nfGVufDB8fHx8MTc2OTA3Mzc2NHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man smiling"
+    },
+    {
+      "id": "user-4",
+      "description": "Profile picture for a fourth user",
+      "imageUrl": "https://images.unsplash.com/photo-1623605931891-d5b95ee98459?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxwZXJzb24lMjBzbWlsaW5nfGVufDB8fHx8MTc2ODk3NTM1Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person smiling"
+    }
+  ]
 }
