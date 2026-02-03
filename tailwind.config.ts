@@ -22,6 +22,16 @@ export default {
         code: ['monospace'],
       },
       colors: {
+        // 🎨 YOUR NEW HUKU PALETTE
+        huku: {
+          orange: '#FB8500', 
+          yellow: '#FFB703', 
+          beige:  '#FAEDCD', 
+          tan:    '#D4A373', 
+          light:  '#FEFAE0', 
+        },
+        
+        // --- Existing Shadcn Colors ---
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

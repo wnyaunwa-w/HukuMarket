@@ -1,76 +1,96 @@
-import { listings } from '@/lib/data';
-import ListingCard from '@/components/listing-card';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { Button } from '@/components/ui/button';
-import { Search } from 'lucide-react';
+"use client";
+import { useState, useEffect } from "react";
+import { Navbar } from "@/components/Navbar";
+import { ListingCard } from "@/components/ListingCard";
+import { ContactModal } from "@/components/ContactModal";
+import { getAllBatches, Batch } from "@/lib/db-service";
+import { Search, Loader2 } from "lucide-react";
 
 export default function Home() {
-  const breeds = [...new Set(listings.map((listing) => listing.breed))];
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      const data = await getAllBatches();
+      setBatches(data);
+      setLoading(false);
+    }
+    loadData();
+  }, []);
+
+  const filteredBatches = batches.filter((b) =>
+    b.location.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <header className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-headline font-bold text-primary mb-2">
-          Find the Best Broilers in Zimbabwe
-        </h1>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Your one-stop marketplace connecting you with trusted chicken producers across the nation.
-        </p>
-      </header>
+    <main className="min-h-screen bg-slate-50">
+      <Navbar />
 
-      <div className="bg-card p-6 rounded-lg shadow-sm mb-8 border">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
-          <div className="space-y-2">
-            <label htmlFor="search" className="text-sm font-medium">Search Location</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input id="search" placeholder="e.g. Harare, Bulawayo..." className="pl-10" />
-            </div>
+      {/* 🎨 HERO SECTION: Updated background to D4A373 (huku-tan) */}
+      <section className="bg-huku-tan py-20 px-4 text-center">
+        <div className="max-w-4xl mx-auto">
+          {/* UPDATED: Text is white for contrast against the Tan background */}
+          <h1 className="text-4xl md:text-6xl font-black text-white mb-6 drop-shadow-sm">
+            Zimbabwe's Poultry Marketplace 🇿🇼
+          </h1>
+          <p className="text-xl text-white/90 mb-10 font-medium max-w-2xl mx-auto leading-relaxed">
+            Connect directly with local broiler producers to buy healthy, market-ready chickens.
+          </p>
+
+          {/* Search Bar */}
+          <div className="relative max-w-xl mx-auto group">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-huku-orange transition-colors" size={20} />
+            <input
+              type="text"
+              placeholder="Search by Location (e.g. Ruwa)"
+              className="w-full pl-14 pr-6 py-5 rounded-2xl shadow-xl outline-none focus:ring-4 ring-white/30 text-lg transition-all text-slate-800 placeholder:text-slate-400"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <div className="space-y-2">
-            <label htmlFor="breed" className="text-sm font-medium">Breed</label>
-            <Select>
-              <SelectTrigger id="breed">
-                <SelectValue placeholder="Any Breed" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="any">Any Breed</SelectItem>
-                {breeds.map((breed) => (
-                  <SelectItem key={breed} value={breed.toLowerCase()}>
-                    {breed}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Price Range ($)</label>
-            <div className='flex items-center gap-4 pt-2'>
-              <span className='text-sm text-muted-foreground'>$1</span>
-              <Slider defaultValue={[1, 50]} max={50} step={1} />
-              <span className='text-sm text-muted-foreground'>$50</span>
-            </div>
-          </div>
-          <Button className="w-full md:w-auto self-end">
-            <Search className="mr-2 h-4 w-4" />
-            Search
-          </Button>
         </div>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-        {listings.map((listing) => (
-          <ListingCard key={listing.id} listing={listing} />
-        ))}
-      </div>
-    </div>
+      {/* Listings Section */}
+      <section className="max-w-6xl mx-auto px-4 py-12">
+        <div className="flex justify-between items-end mb-8">
+          <h2 className="text-3xl font-bold text-slate-900">Fresh Listings</h2>
+          <p className="text-slate-500 font-medium">{filteredBatches.length} producers found</p>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="animate-spin text-huku-orange" size={48} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredBatches.map((batch) => (
+              <ListingCard 
+                key={batch.id} 
+                batch={batch} 
+                onContact={(b) => setSelectedBatch(b)} 
+              />
+            ))}
+          </div>
+        )}
+
+        {!loading && filteredBatches.length === 0 && (
+          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-300">
+            <p className="text-slate-400 text-lg">No producers found in this location yet.</p>
+          </div>
+        )}
+      </section>
+
+      {/* Modals */}
+      {selectedBatch && (
+        <ContactModal 
+          batch={selectedBatch} 
+          onClose={() => setSelectedBatch(null)} 
+        />
+      )}
+    </main>
   );
 }

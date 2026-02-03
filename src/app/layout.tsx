@@ -1,13 +1,34 @@
-import type { Metadata } from 'next';
-import './globals.css';
-import { cn } from '@/lib/utils';
-import { Header } from '@/components/header';
-import { Footer } from '@/components/footer';
-import { Toaster } from '@/components/ui/toaster';
+// src/app/layout.tsx
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+// 1. We import the provider we built
+import { AuthProvider } from "@/context/AuthContext"; 
 
+const inter = Inter({ subsets: ["latin"] });
+
+// 2. NEW: Add Viewport settings for PWA (Mobile App Feel)
+export const viewport: Viewport = {
+  themeColor: "#FB8500",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // Prevents zooming like a website, feels like an app
+};
+
+// 3. UPDATED: Metadata with PWA Manifest
 export const metadata: Metadata = {
-  title: 'HukuMarket',
-  description: 'The premier marketplace for broiler chickens in Zimbabwe.',
+  title: "HukuMarket",
+  description: "Connect directly with local broiler producers in Zimbabwe.",
+  manifest: "/manifest.json", // Links to the file you created
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "HukuMarket",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({
@@ -16,24 +37,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body
-        className={cn(
-          'min-h-screen bg-background font-body antialiased flex flex-col'
-        )}
-      >
-        <Header />
-        <main className="flex-grow">{children}</main>
-        <Footer />
-        <Toaster />
+    <html lang="en">
+      <body className={inter.className}>
+        {/* 4. We WRAP the app with the Provider here */}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
