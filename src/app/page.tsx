@@ -31,26 +31,23 @@ export default function Home() {
       <Navbar />
 
       {/* 🎨 HERO SECTION */}
-      {/* We keep 'bg-huku-tan' as a fallback, but the image will sit ON TOP of it now */}
       <section className="relative py-24 px-4 text-center overflow-hidden bg-huku-tan isolate">
         
         {/* 1. BACKGROUND IMAGE (Bottom Layer) */}
-        {/* We removed the negative z-index. By being first in the HTML, it sits at the bottom. */}
         <Image
           src="/hero-bg.jpg" 
           alt="Poultry Farm Background"
           fill
           priority
           className="object-cover"
-          unoptimized // 👈 Added this to force the image to serve as-is
+          unoptimized
         />
 
         {/* 2. DARK OVERLAY (Middle Layer) */}
-        {/* Sits after the image in HTML, so it renders on top of it */}
-        <div className="absolute inset-0 bg-black/50" />
+        {/* UPDATED: Changed from bg-black/50 to bg-black/30 for better visibility */}
+        <div className="absolute inset-0 bg-black/30" />
 
         {/* 3. CONTENT (Top Layer) */}
-        {/* We give this z-10 to explicitly tell the browser "this is the front" */}
         <div className="relative z-10 max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-6xl font-black text-white mb-6 drop-shadow-sm">
             Zimbabwe's Poultry Marketplace 🇿🇼
@@ -73,7 +70,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Listings Section */}
+      {/* Listings Section (Unchanged) */}
       <section className="max-w-6xl mx-auto px-4 py-12">
         <div className="flex justify-between items-end mb-8">
           <h2 className="text-3xl font-bold text-slate-900">Fresh Listings</h2>
