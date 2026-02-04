@@ -29,13 +29,11 @@ export function getGrowthStage(hatchDate: string) {
   return { stage, progress, daysLeft, daysOld };
 }
 
-// 3. Batch Metrics Logic (Universal Fix)
-// Now accepts either (hatchDate string) OR (batch object) to prevent errors
+// 3. Batch Metrics Logic (Updated with Colors)
 export function calculateBatchMetrics(input: any, breed?: string) {
-    // Handle if input is a whole batch object OR just a date string
     const hatchDate = input?.hatchDate ? input.hatchDate : input;
     
-    // Safety check: if date is missing, return safe defaults
+    // Safety check defaults
     if (!hatchDate || typeof hatchDate !== 'string') {
         return {
             ageInDays: 0,
@@ -43,6 +41,8 @@ export function calculateBatchMetrics(input: any, breed?: string) {
             daysRemaining: 0,
             stage: "Unknown",
             progress: 0,
+            status: "Unknown",      // 👈 Added
+            statusColor: "bg-gray-100 text-gray-500", // 👈 Added
             mortalityRate: 0, 
             feedConversion: 0 
         };
@@ -50,12 +50,26 @@ export function calculateBatchMetrics(input: any, breed?: string) {
 
     const { daysOld, daysLeft, stage, progress } = getGrowthStage(hatchDate);
 
+    // 🎨 Determine Colors based on Stage
+    let statusColor = "bg-blue-100 text-blue-700"; // Default (Growing)
+    let statusText = stage;
+
+    if (stage === "Market Ready") {
+        statusColor = "bg-green-100 text-green-700";
+        statusText = "Ready for Market";
+    } else if (stage === "Chicks") {
+        statusColor = "bg-yellow-100 text-yellow-700";
+    }
+
     return {
         ageInDays: daysOld,
         ageInWeeks: Math.floor(daysOld / 7),
         daysRemaining: daysLeft,
         stage: stage,
         progress: progress,
+        // 👇 These are the fields your Dashboard was asking for
+        status: statusText,
+        statusColor: statusColor,
         mortalityRate: 0, 
         feedConversion: 1.5 
     };
