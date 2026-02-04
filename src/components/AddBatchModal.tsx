@@ -39,7 +39,6 @@ export function AddBatchModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      {/* UPDATED: bg-huku-light for the cream background */}
       <div className="bg-huku-light rounded-2xl w-full max-w-md p-6 relative shadow-2xl border border-huku-tan max-h-[90vh] overflow-y-auto">
         <button 
           onClick={onClose} 
@@ -75,7 +74,7 @@ export function AddBatchModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          {/* Placement Date - UPDATED TEXT */}
+          {/* Placement Date Section */}
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1">
               Placement Date <span className="text-red-500">*</span>
@@ -86,7 +85,7 @@ export function AddBatchModal({ onClose }: { onClose: () => void }) {
               value={formData.hatchDate}
               onChange={(e) => setFormData({...formData, hatchDate: e.target.value})}
             />
-            {/* UPDATED: "fowl run" text */}
+            {/* VERIFIED TEXT CHANGE BELOW */}
             <p className="text-[10px] text-slate-400 mt-1 ml-1 font-medium">
               Date chicks were placed in your fowl run.
             </p>
