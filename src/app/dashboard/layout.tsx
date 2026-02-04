@@ -15,7 +15,8 @@ import {
   LogOut,
   ShieldCheck,
   Menu,
-  ShoppingBag // Icon for the new "Back to Market" button
+  ShoppingBag,
+  Heart // 👈 Imported Heart icon
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -33,8 +34,10 @@ import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
+// UPDATED: Added 'Saved Farms' to the menu
 const menuItems = [
   { href: '/dashboard', label: 'Overview', icon: Home },
+  { href: '/dashboard/favorites', label: 'Saved Farms', icon: Heart }, // 👈 New Menu Item
   { href: '/dashboard/profile', label: 'Profile', icon: UserCircle },
   { href: '/dashboard/listings', label: 'My Listings', icon: LayoutGrid },
   { href: '/dashboard/listings/new', label: 'Create Listing', icon: PlusCircle },
@@ -54,7 +57,7 @@ function MobileSidebarTrigger() {
   );
 }
 
-// 1. Create a wrapper for links to handle mobile closing automatically
+// Wrapper for links to handle mobile closing automatically
 function SidebarLink({ item, isActive }: { item: any, isActive: boolean }) {
   const { setOpenMobile, isMobile } = useSidebar();
 
@@ -83,11 +86,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const { currentUser, logout } = useAuth();
   const [profile, setProfile] = useState<any>(null);
-
-  // We need access to sidebar controls for the logout button too
-  // Note: We can't use useSidebar() here directly because this component *renders* SidebarProvider.
-  // The SidebarLink component above solves this for the menu.
-  // For the main layout, the structure below is correct.
 
   useEffect(() => {
     if (currentUser) {
@@ -128,7 +126,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <SidebarMenu className="p-2 space-y-1">
               
-              {/* 3. NEW: Back to Homepage Button */}
+              {/* Back to Homepage Button */}
               <SidebarMenuItem>
                 <SidebarLink 
                   item={{ href: '/', label: 'Back to Market', icon: ShoppingBag }} 
@@ -159,7 +157,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t border-huku-tan">
-            {/* 2. Log Out Button Wrapper */}
+            {/* Log Out Button Wrapper */}
             <LogoutButton logoutAction={logout} />
           </SidebarFooter>
         </Sidebar>
@@ -182,7 +180,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 }
 
-// 2. Helper Component to handle Logout + Sidebar Close
+// Helper Component to handle Logout + Sidebar Close
 function LogoutButton({ logoutAction }: { logoutAction: () => void }) {
   const { setOpenMobile, isMobile } = useSidebar();
 
