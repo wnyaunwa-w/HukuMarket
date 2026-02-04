@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { LayoutGrid, ShoppingBag, LogOut, PlusCircle } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell"; // 👈 1. Imported the Bell
 
 export function Navbar() {
   const { currentUser, logout } = useAuth();
@@ -10,7 +11,7 @@ export function Navbar() {
     <nav className="bg-white border-b border-slate-100 sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         
-        {/* Logo: UPDATED text color to huku-orange (FB8500) */}
+        {/* Logo */}
         <Link href="/" className="flex items-center space-x-2 font-black text-xl text-huku-orange">
           <span className="text-2xl">🐔</span>
           <span className="hidden sm:inline">HukuMarket</span>
@@ -25,6 +26,11 @@ export function Navbar() {
 
           {currentUser ? (
             <>
+              {/* 🔔 2. Added Notification Bell here */}
+              <div className="mr-1">
+                <NotificationBell />
+              </div>
+
               <Link href="/dashboard" className="flex items-center gap-2 text-slate-600 hover:text-huku-orange font-medium transition-colors">
                 <LayoutGrid size={18} />
                 <span className="hidden sm:inline">Dashboard</span>

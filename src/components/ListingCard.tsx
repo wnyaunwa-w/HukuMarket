@@ -1,8 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Batch, getUserProfile } from "@/lib/db-service";
-import { calculateBatchMetrics, BREEDS } from "@/lib/chickenLogic";
-import { MapPin, Calendar, Star, User, ArrowRight } from "lucide-react";
+
+import { Batch } from "@/lib/db-service";
+import { Users, Calendar, MapPin, ArrowRight, Heart } from "lucide-react";
+import { getGrowthStage } from "@/lib/chickenLogic"; // This will work now
+import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { toggleFavorite, getFavoriteIds } from "@/lib/db-service";
 
 interface ListingCardProps {
   batch: Batch;
@@ -10,106 +13,113 @@ interface ListingCardProps {
 }
 
 export function ListingCard({ batch, onContact }: ListingCardProps) {
-  const [farmer, setFarmer] = useState<any>(null);
-  const metrics = calculateBatchMetrics(batch.hatchDate, batch.breed);
+  // 1. Safe access to hatchDate
+  const { stage, progress, daysLeft } = getGrowthStage(batch.hatchDate);
+  
+  const { currentUser } = useAuth();
+  const [isFavorite, setIsFavorite] = useState(false);
 
-  // Fetch the farmer's details (Name/Avatar) for this specific batch
+  // Check if this batch is already favorited by the user
   useEffect(() => {
-    async function loadFarmer() {
-      const profile = await getUserProfile(batch.userId);
-      setFarmer(profile);
+    async function checkStatus() {
+      // 2. Added check: Ensure we have both a user AND a batch ID
+      if (currentUser && batch.id) {
+        const favs = await getFavoriteIds(currentUser.uid);
+        setIsFavorite(favs.includes(batch.id));
+      }
     }
-    loadFarmer();
-  }, [batch.userId]);
+    checkStatus();
+  }, [currentUser, batch.id]);
+
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    e.stopPropagation(); 
+    if (!currentUser) return alert("Please sign in to save favorites!");
+    
+    // 3. Safety check: Cannot favorite a batch without an ID
+    if (!batch.id) return;
+
+    const newState = !isFavorite;
+    setIsFavorite(newState);
+    
+    try {
+      await toggleFavorite(currentUser.uid, batch.id);
+    } catch (error) {
+      setIsFavorite(!newState); // Revert on error
+    }
+  };
 
   return (
-    // UPDATED: bg-huku-light, border-huku-tan
-    <div className="bg-huku-light rounded-2xl shadow-sm hover:shadow-xl transition border border-huku-tan group flex flex-col h-full overflow-hidden">
+    <div className="bg-huku-light border-2 border-huku-tan rounded-3xl p-6 relative hover:shadow-xl transition-all hover:scale-[1.02] group">
       
-      {/* 1. Header: Price & Status */}
-      <div className="p-6 pb-2 flex justify-between items-start">
+      {/* Heart Icon */}
+      <button 
+        onClick={handleToggleFavorite}
+        className="absolute top-5 right-5 z-20 p-2 rounded-full bg-white/80 hover:bg-white transition shadow-sm"
+      >
+        <Heart 
+          size={22} 
+          className={`transition-colors duration-300 ${isFavorite ? "fill-red-500 text-red-500" : "text-slate-400 hover:text-red-400"}`}
+        />
+      </button>
+
+      {/* Growth Badge */}
+      <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-4 ${
+        stage === "Market Ready" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+      }`}>
+        {stage.toUpperCase()}
+      </div>
+
+      <div className="flex justify-between items-start mb-2 pr-10">
         <div>
-          {/* UPDATED: Status badge border */}
-          <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider border border-white/50 ${metrics.statusColor}`}>
-            {metrics.status}
-          </span>
-          <h3 className="font-bold text-xl text-slate-900 mt-2">
-            {BREEDS[batch.breed as keyof typeof BREEDS]?.name || batch.breed}
-          </h3>
+          <h3 className="text-xl font-black text-slate-800">{batch.breed}</h3>
+          <p className="text-slate-500 text-sm font-medium flex items-center gap-1 mt-1">
+            {/* 4. FIXED: Changed 'quantity' to 'count' to match database */}
+            <Users size={14} /> {batch.count} birds available
+          </p>
         </div>
         <div className="text-right">
-          {/* UPDATED: Price color to huku-orange */}
-          <p className="text-2xl font-black text-huku-orange">${batch.pricePerBird}</p>
-          <p className="text-xs text-slate-500">per bird</p>
+          <span className="block text-2xl font-black text-huku-orange">${batch.pricePerBird}</span>
+          <span className="text-xs text-slate-400 font-bold">per bird</span>
         </div>
       </div>
 
-      {/* 2. Farmer Profile Strip */}
-      {/* UPDATED: Border color to huku-tan/30 */}
-      <div className="px-6 py-3 flex items-center gap-3 border-b border-huku-tan/30">
-        {/* UPDATED: Avatar border */}
-        <div className="w-10 h-10 rounded-full bg-white border border-huku-tan overflow-hidden shrink-0">
-          {farmer?.photoURL ? (
-            <img src={farmer.photoURL} alt="Farmer" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-slate-400"><User size={20} /></div>
-          )}
+      {/* Progress Bar */}
+      <div className="mt-4 mb-4">
+        <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+          <span>Growth Progress</span>
+          <span>{Math.min(Math.round(progress), 100)}%</span>
         </div>
-        <div className="flex-grow">
-          <p className="text-sm font-bold text-slate-800 leading-tight">
-            {farmer?.displayName || "Local Farmer"}
-          </p>
-          {/* UPDATED: Stars color to huku-yellow */}
-          <div className="flex items-center gap-1 text-xs text-huku-yellow">
-            <Star size={10} fill="currentColor" />
-            <span className="font-bold text-slate-700">5.0</span>
-            <span className="text-slate-400 font-normal">(New Seller)</span>
-          </div>
+        <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden">
+          <div 
+            className={`h-full rounded-full transition-all duration-1000 ${
+              stage === "Market Ready" ? "bg-green-500" : "bg-huku-orange"
+            }`} 
+            style={{ width: `${Math.min(progress, 100)}%` }} 
+          />
         </div>
       </div>
 
-      {/* 3. Details: Location, Qty, Date */}
-      <div className="px-6 py-4 flex flex-col gap-2 text-sm text-slate-700 flex-grow">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {/* UPDATED: Icon color to huku-orange */}
-            <MapPin size={16} className="text-huku-orange" />
-            <span className="font-medium">{batch.location}</span>
-          </div>
-          {/* UPDATED: Quantity Badge style */}
-          <span className="bg-white/80 border border-huku-tan/30 text-slate-700 px-2 py-0.5 rounded text-xs font-bold">
-            {batch.count} birds left
+      {/* Details Grid */}
+      <div className="grid grid-cols-2 gap-3 text-sm text-slate-600 mb-6">
+        <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-100">
+          <MapPin size={16} className="text-huku-orange" />
+          <span className="truncate">{batch.location}</span>
+        </div>
+        <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-100">
+          <Calendar size={16} className="text-huku-orange" />
+          <span className="truncate">
+            {daysLeft <= 0 ? "Ready Now!" : `Ready in ${daysLeft} days`}
           </span>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <Calendar size={16} className="text-blue-500" />
-          <span>Ready: <b>{metrics.marketReadyDate}</b></span>
-        </div>
       </div>
 
-      {/* 4. Progress Bar */}
-      <div className="px-6 pb-4">
-        <div className="flex justify-between text-xs text-slate-500 mb-1">
-          <span>Growth Progress</span>
-          <span>{Math.round(metrics.progress)}%</span>
-        </div>
-        {/* UPDATED: Bar background white with tan border */}
-        <div className="w-full bg-white rounded-full h-2 border border-huku-tan/20">
-          <div className="bg-green-500 h-2 rounded-full" style={{ width: `${metrics.progress}%` }}></div>
-        </div>
-      </div>
-
-      {/* 5. Footer Button */}
-      {/* UPDATED: Footer bg and border */}
-      <div className="p-4 bg-huku-tan/10 mt-auto border-t border-huku-tan/30">
-        <button 
-          onClick={() => onContact(batch)}
-          className="w-full py-3 rounded-xl font-bold bg-white border border-huku-tan text-slate-800 shadow-sm hover:bg-slate-900 hover:text-white hover:border-slate-900 transition flex items-center justify-center gap-2"
-        >
-          View Contact Details <ArrowRight size={16} />
-        </button>
-      </div>
+      {/* Action Button */}
+      <button 
+        onClick={() => onContact(batch)}
+        className="w-full py-3 rounded-xl font-bold bg-white border-2 border-slate-100 text-slate-700 hover:border-huku-orange hover:text-huku-orange hover:bg-orange-50 transition flex items-center justify-center gap-2"
+      >
+        View Details <ArrowRight size={18} />
+      </button>
     </div>
   );
 }

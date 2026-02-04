@@ -12,7 +12,8 @@ import {
   getDoc, 
   setDoc, 
   updateDoc,      
-  runTransaction  
+  runTransaction,
+  deleteDoc // 👈 Added this to fix the "Cannot find name" error
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -51,7 +52,6 @@ export function subscribeToBatches(userId: string, callback: (data: Batch[]) => 
     orderBy("createdAt", "desc")
   );
   
-  // UPDATED: Added error handler to silence logout permission errors
   return onSnapshot(q, 
     (snapshot) => {
       const batches = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Batch[];
@@ -123,7 +123,6 @@ export async function updateBatchStock(batchId: string, soldAmount: number) {
   try {
     const batchRef = doc(db, "batches", batchId);
     
-    // We use a transaction to ensure we don't sell more than we have
     await runTransaction(db, async (transaction) => {
       const batchDoc = await transaction.get(batchRef);
       if (!batchDoc.exists()) throw "Batch does not exist!";
@@ -176,7 +175,6 @@ export async function getFarmerReviews(farmerId: string) {
     return [];
   }
 }
-// ... existing code ...
 
 // 10. Admin: Get All Users
 export async function getAllUsers() {
@@ -190,4 +188,48 @@ export async function getAllUsers() {
     console.error("Error fetching users:", error);
     return [];
   }
+}
+
+// ❤️ FAVORITES SYSTEM (NEWLY ADDED)
+
+// Toggle Favorite status
+export async function toggleFavorite(userId: string, batchId: string) {
+  // Guard clause to prevent "undefined" errors
+  if (!userId) throw new Error("User ID is required");
+
+  const docRef = doc(db, "users", userId, "favorites", batchId);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    await deleteDoc(docRef);
+    return false; // Removed
+  } else {
+    await setDoc(docRef, { 
+      batchId, 
+      addedAt: new Date().toISOString() 
+    });
+    return true; // Added
+  }
+}
+
+// Get all favorited batch IDs for a user
+export async function getFavoriteIds(userId: string): Promise<string[]> {
+  if (!userId) return []; // Guard clause for safety
+
+  const q = collection(db, "users", userId, "favorites");
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => doc.id);
+}
+
+// Get full batch details for favorites (for the Notification check)
+export async function getFavoriteBatches(userId: string): Promise<Batch[]> {
+  if (!userId) return []; // Guard clause for safety
+
+  const favIds = await getFavoriteIds(userId);
+  if (favIds.length === 0) return [];
+
+  // Fetch all batches and filter. 
+  // (In a larger app, we would use document lookups, but this is efficient for now)
+  const allBatches = await getAllBatches();
+  return allBatches.filter(b => b.id && favIds.includes(b.id));
 }
