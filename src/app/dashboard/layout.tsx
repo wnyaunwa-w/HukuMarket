@@ -14,7 +14,8 @@ import {
   UserCircle,
   LogOut,
   ShieldCheck,
-  Menu 
+  Menu,
+  ShoppingBag // Icon for the new "Back to Market" button
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -42,7 +43,7 @@ const menuItems = [
 
 const ADMIN_EMAIL = "wnyaunwa@gmail.com";
 
-// Helper Component for the Trigger Button
+// Helper to trigger mobile menu
 function MobileSidebarTrigger() {
   const { toggleSidebar } = useSidebar();
   
@@ -53,10 +54,40 @@ function MobileSidebarTrigger() {
   );
 }
 
+// 1. Create a wrapper for links to handle mobile closing automatically
+function SidebarLink({ item, isActive }: { item: any, isActive: boolean }) {
+  const { setOpenMobile, isMobile } = useSidebar();
+
+  const handleClick = () => {
+    if (isMobile) {
+      setOpenMobile(false); // Close sidebar when clicked on mobile
+    }
+  };
+
+  return (
+    <SidebarMenuButton
+      asChild
+      isActive={isActive}
+      tooltip={item.label}
+      className="hover:bg-orange-50 hover:text-orange-600 transition-colors cursor-pointer"
+    >
+      <Link href={item.href} onClick={handleClick}>
+        <item.icon />
+        <span>{item.label}</span>
+      </Link>
+    </SidebarMenuButton>
+  );
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { currentUser, logout } = useAuth();
   const [profile, setProfile] = useState<any>(null);
+
+  // We need access to sidebar controls for the logout button too
+  // Note: We can't use useSidebar() here directly because this component *renders* SidebarProvider.
+  // The SidebarLink component above solves this for the menu.
+  // For the main layout, the structure below is correct.
 
   useEffect(() => {
     if (currentUser) {
@@ -74,10 +105,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <ForceProfileUpdateModal />
 
       <div className="flex min-h-screen w-full">
-        {/* UPDATED: Added huku-beige background and huku-tan border */}
         <Sidebar collapsible="icon" className="bg-huku-beige border-r border-huku-tan text-slate-800">
           <SidebarContent>
-            {/* UPDATED: Border color */}
             <SidebarHeader className="p-4 border-b border-huku-tan">
               <div className="flex items-center gap-3 overflow-hidden transition-all duration-200">
                 <Avatar className="h-10 w-10 border border-slate-200">
@@ -98,52 +127,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </SidebarHeader>
 
             <SidebarMenu className="p-2 space-y-1">
+              
+              {/* 3. NEW: Back to Homepage Button */}
+              <SidebarMenuItem>
+                <SidebarLink 
+                  item={{ href: '/', label: 'Back to Market', icon: ShoppingBag }} 
+                  isActive={false} 
+                />
+              </SidebarMenuItem>
+              
+              <div className="my-2 border-t border-huku-tan/30 mx-2" />
+
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.href}
-                    tooltip={item.label}
-                    className="hover:bg-orange-50 hover:text-orange-600 transition-colors"
-                  >
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
+                  <SidebarLink item={item} isActive={pathname === item.href} />
                 </SidebarMenuItem>
               ))}
 
               {currentUser?.email === ADMIN_EMAIL && (
                 <>
-                  <div className="my-2 border-t border-slate-200 mx-2" />
+                  <div className="my-2 border-t border-huku-tan/30 mx-2" />
                   <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={pathname === '/dashboard/admin'}
-                      className="bg-red-50 text-red-700 hover:bg-red-100 font-bold"
-                    >
-                      <Link href="/dashboard/admin">
-                        <ShieldCheck />
-                        <span>Super Admin</span>
-                      </Link>
-                    </SidebarMenuButton>
+                    <SidebarLink 
+                      item={{ href: '/dashboard/admin', label: 'Super Admin', icon: ShieldCheck }} 
+                      isActive={pathname === '/dashboard/admin'} 
+                    />
                   </SidebarMenuItem>
                 </>
               )}
             </SidebarMenu>
           </SidebarContent>
 
-          {/* UPDATED: Border color */}
           <SidebarFooter className="p-4 border-t border-huku-tan">
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
-              onClick={logout}
-            >
-              <LogOut size={16} className="mr-2" />
-              <span className="group-data-[collapsible=icon]:hidden">Log Out</span>
-            </Button>
+            {/* 2. Log Out Button Wrapper */}
+            <LogoutButton logoutAction={logout} />
           </SidebarFooter>
         </Sidebar>
 
@@ -162,5 +179,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </SidebarInset>
       </div>
     </SidebarProvider>
+  );
+}
+
+// 2. Helper Component to handle Logout + Sidebar Close
+function LogoutButton({ logoutAction }: { logoutAction: () => void }) {
+  const { setOpenMobile, isMobile } = useSidebar();
+
+  const handleLogout = () => {
+    logoutAction();
+    if (isMobile) setOpenMobile(false);
+  };
+
+  return (
+    <Button 
+      variant="ghost" 
+      className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 cursor-pointer"
+      onClick={handleLogout}
+    >
+      <LogOut size={16} className="mr-2" />
+      <span className="group-data-[collapsible=icon]:hidden">Log Out</span>
+    </Button>
   );
 }
