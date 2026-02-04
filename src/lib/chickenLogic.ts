@@ -1,4 +1,4 @@
-import { differenceInDays, parseISO } from "date-fns";
+import { differenceInDays, parseISO, addDays, format } from "date-fns";
 
 // 1. Defined Breeds
 export const BREEDS: Record<string, { name: string; daysToMaturity: number }> = {
@@ -29,7 +29,7 @@ export function getGrowthStage(hatchDate: string) {
   return { stage, progress, daysLeft, daysOld };
 }
 
-// 3. Batch Metrics Logic (Updated with Colors)
+// 3. Batch Metrics Logic (Updated with Market Ready Date)
 export function calculateBatchMetrics(input: any, breed?: string) {
     const hatchDate = input?.hatchDate ? input.hatchDate : input;
     
@@ -41,8 +41,9 @@ export function calculateBatchMetrics(input: any, breed?: string) {
             daysRemaining: 0,
             stage: "Unknown",
             progress: 0,
-            status: "Unknown",      // 👈 Added
-            statusColor: "bg-gray-100 text-gray-500", // 👈 Added
+            status: "Unknown",
+            statusColor: "bg-gray-100 text-gray-500",
+            marketReadyDate: "N/A", // 👈 Added default
             mortalityRate: 0, 
             feedConversion: 0 
         };
@@ -61,15 +62,20 @@ export function calculateBatchMetrics(input: any, breed?: string) {
         statusColor = "bg-yellow-100 text-yellow-700";
     }
 
+    // 📅 Calculate the exact Market Ready Date
+    // We assume 42 days maturity for broilers by default
+    const maturityDate = addDays(parseISO(hatchDate), 42);
+    const formattedReadyDate = format(maturityDate, "d MMM yyyy");
+
     return {
         ageInDays: daysOld,
         ageInWeeks: Math.floor(daysOld / 7),
         daysRemaining: daysLeft,
         stage: stage,
         progress: progress,
-        // 👇 These are the fields your Dashboard was asking for
         status: statusText,
         statusColor: statusColor,
+        marketReadyDate: formattedReadyDate, // 👈 The missing field fixing your error
         mortalityRate: 0, 
         feedConversion: 1.5 
     };
