@@ -29,10 +29,26 @@ export function getGrowthStage(hatchDate: string) {
   return { stage, progress, daysLeft, daysOld };
 }
 
-// 3. RESTORED: Batch Metrics Logic (Used by Dashboard)
-// This was missing and caused the error. We re-use getGrowthStage logic here.
-export function calculateBatchMetrics(batch: { hatchDate: string; count: number }) {
-    const { daysOld, daysLeft, stage, progress } = getGrowthStage(batch.hatchDate);
+// 3. Batch Metrics Logic (Universal Fix)
+// Now accepts either (hatchDate string) OR (batch object) to prevent errors
+export function calculateBatchMetrics(input: any, breed?: string) {
+    // Handle if input is a whole batch object OR just a date string
+    const hatchDate = input?.hatchDate ? input.hatchDate : input;
+    
+    // Safety check: if date is missing, return safe defaults
+    if (!hatchDate || typeof hatchDate !== 'string') {
+        return {
+            ageInDays: 0,
+            ageInWeeks: 0,
+            daysRemaining: 0,
+            stage: "Unknown",
+            progress: 0,
+            mortalityRate: 0, 
+            feedConversion: 0 
+        };
+    }
+
+    const { daysOld, daysLeft, stage, progress } = getGrowthStage(hatchDate);
 
     return {
         ageInDays: daysOld,
@@ -40,7 +56,6 @@ export function calculateBatchMetrics(batch: { hatchDate: string; count: number 
         daysRemaining: daysLeft,
         stage: stage,
         progress: progress,
-        // Default values to prevent dashboard crashes if these aren't in DB yet
         mortalityRate: 0, 
         feedConversion: 1.5 
     };
