@@ -1,7 +1,7 @@
 "use client";
 
 import { Batch } from "@/lib/db-service";
-import { Users, Calendar, MapPin, ArrowRight, Heart, Star } from "lucide-react";
+import { Users, MapPin, ArrowRight, Heart, Star } from "lucide-react";
 import { getGrowthStage } from "@/lib/chickenLogic";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -73,12 +73,14 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
   };
 
   return (
-    <div className="bg-white border-2 border-slate-100 rounded-3xl p-5 relative hover:shadow-xl transition-all hover:scale-[1.01] group">
+    // UPDATED: Changed bg-white/border-slate-100 back to bg-huku-light/border-huku-tan
+    <div className="bg-huku-light border-2 border-huku-tan rounded-3xl p-5 relative hover:shadow-xl transition-all hover:scale-[1.01] group">
       
-      {/* ❤️ HEART ICON (Top Right) */}
+      {/* ❤️ HEART ICON */}
       <button 
         onClick={handleToggleFavorite}
-        className="absolute top-5 right-5 z-20 p-2 rounded-full bg-white/90 hover:bg-slate-50 transition shadow-sm border border-slate-100"
+        // Kept this white for contrast against the cream background
+        className="absolute top-5 right-5 z-20 p-2 rounded-full bg-white hover:bg-orange-50 transition shadow-sm border border-huku-tan/50"
       >
         <Heart 
           size={20} 
@@ -86,7 +88,7 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         />
       </button>
 
-      {/* 👤 FARMER PROFILE HEADER (New Requirement) */}
+      {/* 👤 FARMER PROFILE HEADER */}
       <div className="flex items-center gap-3 mb-6 pr-10">
         {/* Farmer Photo */}
         <div className="h-12 w-12 rounded-full bg-slate-100 border-2 border-white shadow-sm overflow-hidden relative">
@@ -116,7 +118,7 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         <div>
           {/* Breed */}
           <span className="text-sm font-bold text-slate-500 mb-1 block">{batch.breed}</span>
-          {/* 🔢 BOLD QUANTITY (Requirement: Bold and Clear) */}
+          {/* 🔢 BOLD QUANTITY */}
           <div className="flex items-center gap-2">
             <Users size={28} className="text-slate-800" />
             <span className="text-4xl font-black text-slate-900 tracking-tight">{batch.count}</span>
@@ -125,14 +127,14 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         </div>
         
         {/* Price */}
-        <div className="text-right bg-orange-50 px-3 py-2 rounded-xl">
+        <div className="text-right bg-white/80 border border-huku-tan/50 px-3 py-2 rounded-xl">
           <span className="block text-xl font-black text-huku-orange">${batch.pricePerBird.toFixed(2)}</span>
           <span className="text-[11px] text-orange-600/70 font-bold uppercase tracking-wider">per bird</span>
         </div>
       </div>
 
 
-      {/* 🟢 PROGRESS BAR (Requirement: Always Green) */}
+      {/* 🟢 PROGRESS BAR (Always Green) */}
       <div className="mb-6">
         <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
           <span className={`px-2 py-0.5 rounded text-[10px] uppercase ${stage === 'Market Ready' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
@@ -140,27 +142,24 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
           </span>
           <span>{daysLeft <= 0 ? "Ready Now" : `${daysLeft} days left`}</span>
         </div>
-        <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-3 w-full bg-slate-200/50 rounded-full overflow-hidden">
           <div 
-            // FORCED bg-green-500 as requested
             className="h-full rounded-full transition-all duration-1000 bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]"
             style={{ width: `${Math.min(progress, 100)}%` }} 
           />
         </div>
       </div>
 
-      {/* 📍 LOCATION (Requirement: Fit well) */}
-      <div className="flex items-start gap-2 text-sm text-slate-600 mb-6 bg-slate-50 p-3 rounded-xl border border-slate-100">
+      {/* 📍 LOCATION */}
+      <div className="flex items-start gap-2 text-sm text-slate-600 mb-6 bg-white/60 p-3 rounded-xl border border-huku-tan/50">
         <MapPin size={18} className="text-slate-400 shrink-0 mt-0.5" />
-        {/* line-clamp-2 ensures long locations don't break layout */}
         <span className="font-medium leading-snug line-clamp-2">{batch.location}</span>
       </div>
 
-      {/* 🟢 ACTION BUTTON (Requirement: Green Hover) */}
+      {/* 🟢 ACTION BUTTON (Green Hover) */}
       <button 
         onClick={() => onContact(batch)}
-        // Changed hover classes from orange to green
-        className="w-full py-3.5 rounded-xl font-bold bg-white border-2 border-slate-200 text-slate-700 hover:border-green-500 hover:text-green-700 hover:bg-green-50/50 transition-all duration-300 flex items-center justify-center gap-2 group-hover:shadow-md"
+        className="w-full py-3.5 rounded-xl font-bold bg-white border-2 border-huku-tan/50 text-slate-700 hover:border-green-500 hover:text-green-700 hover:bg-green-50/50 transition-all duration-300 flex items-center justify-center gap-2 group-hover:shadow-md"
       >
         View Contact Details <ArrowRight size={18} className="text-slate-400 group-hover:text-green-600 transition-colors"/>
       </button>
