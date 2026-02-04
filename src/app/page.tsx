@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import Image from "next/image"; // 👈 1. Import Image component
+import Image from "next/image";
 import { Navbar } from "@/components/Navbar";
 import { ListingCard } from "@/components/ListingCard";
 import { ContactModal } from "@/components/ContactModal";
@@ -30,25 +30,27 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50">
       <Navbar />
 
-      {/* 🎨 HERO SECTION: UPDATED STRUCTURE */}
-      {/* 2. Changed className: Added 'relative' and removed 'bg-huku-tan' */}
-      <section className="relative py-24 px-4 text-center overflow-hidden">
+      {/* 🎨 HERO SECTION */}
+      {/* We keep 'bg-huku-tan' as a fallback, but the image will sit ON TOP of it now */}
+      <section className="relative py-24 px-4 text-center overflow-hidden bg-huku-tan isolate">
         
-        {/* 3. THE BACKGROUND IMAGE */}
-        {/* Ensure your image is named 'hero-bg.jpg' and is in the 'public' folder */}
+        {/* 1. BACKGROUND IMAGE (Bottom Layer) */}
+        {/* We removed the negative z-index. By being first in the HTML, it sits at the bottom. */}
         <Image
           src="/hero-bg.jpg" 
           alt="Poultry Farm Background"
           fill
-          priority // Tells Next.js to load this image first
-          className="object-cover -z-20" // Puts it behind everything
+          priority
+          className="object-cover"
+          unoptimized // 👈 Added this to force the image to serve as-is
         />
 
-        {/* 4. THE DARK OVERLAY (Crucial for text readability) */}
-        {/* Adjust 'bg-black/50' to make it darker/lighter (e.g., bg-black/40 or bg-black/60) */}
-        <div className="absolute inset-0 bg-black/50 -z-10" />
+        {/* 2. DARK OVERLAY (Middle Layer) */}
+        {/* Sits after the image in HTML, so it renders on top of it */}
+        <div className="absolute inset-0 bg-black/50" />
 
-        {/* 5. THE CONTENT CONTAINER (Wrapped to ensure z-index sits on top) */}
+        {/* 3. CONTENT (Top Layer) */}
+        {/* We give this z-10 to explicitly tell the browser "this is the front" */}
         <div className="relative z-10 max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-6xl font-black text-white mb-6 drop-shadow-sm">
             Zimbabwe's Poultry Marketplace 🇿🇼
@@ -71,7 +73,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Listings Section (Unchanged) */}
+      {/* Listings Section */}
       <section className="max-w-6xl mx-auto px-4 py-12">
         <div className="flex justify-between items-end mb-8">
           <h2 className="text-3xl font-bold text-slate-900">Fresh Listings</h2>
