@@ -7,7 +7,7 @@ import {
   signOut, 
   onAuthStateChanged, 
   User,
-  sendPasswordResetEmail // 👈 Import this
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -18,7 +18,7 @@ interface AuthContextType {
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>; // 👈 Add to interface
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,7 +30,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        await saveUserProfile(user);
+        // By default, if a user logs in via Google without a prior role, we assume 'buyer'
+        // Ideally, Google login should also ask for a role, but for now, this is safe.
+        await saveUserProfile(user, "buyer");
         setCurrentUser(user);
       } else {
         setCurrentUser(null);
@@ -40,10 +42,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const saveUserProfile = async (user: User) => {
+  // UPDATED: Added 'role' parameter to save subscription status
+  const saveUserProfile = async (user: User, role: "buyer" | "farmer" = "buyer") => {
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
 
+    // Only create the doc if it doesn't exist (prevents overwriting existing users)
     if (!userSnap.exists()) {
       await setDoc(userRef, {
         uid: user.uid,
@@ -51,7 +55,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         displayName: user.displayName,
         photoURL: user.photoURL,
         createdAt: serverTimestamp(),
-        role: "farmer"
+        // 👇 NEW FIELDS FOR SUBSCRIPTION LOGIC
+        role: role, 
+        // If Farmer, status starts as 'inactive'. Buyers are always 'active' (free).
+        subscriptionStatus: role === 'farmer' ? 'inactive' : 'active', 
       }, { merge: true });
     }
   };
@@ -72,7 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => signOut(auth);
 
-  // 👇 New Function: Send Password Reset Email
   const resetPassword = async (email: string) => {
     if (!email) throw new Error("Please enter your email first.");
     await sendPasswordResetEmail(auth, email);
