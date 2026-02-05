@@ -13,7 +13,7 @@ import {
   setDoc, 
   updateDoc,      
   runTransaction,
-  deleteDoc // 👈 Added this to fix the "Cannot find name" error
+  deleteDoc 
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -190,11 +190,10 @@ export async function getAllUsers() {
   }
 }
 
-// ❤️ FAVORITES SYSTEM (NEWLY ADDED)
+// ❤️ FAVORITES SYSTEM
 
 // Toggle Favorite status
 export async function toggleFavorite(userId: string, batchId: string) {
-  // Guard clause to prevent "undefined" errors
   if (!userId) throw new Error("User ID is required");
 
   const docRef = doc(db, "users", userId, "favorites", batchId);
@@ -214,22 +213,73 @@ export async function toggleFavorite(userId: string, batchId: string) {
 
 // Get all favorited batch IDs for a user
 export async function getFavoriteIds(userId: string): Promise<string[]> {
-  if (!userId) return []; // Guard clause for safety
+  if (!userId) return []; 
 
   const q = collection(db, "users", userId, "favorites");
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => doc.id);
 }
 
-// Get full batch details for favorites (for the Notification check)
+// Get full batch details for favorites
 export async function getFavoriteBatches(userId: string): Promise<Batch[]> {
-  if (!userId) return []; // Guard clause for safety
+  if (!userId) return []; 
 
   const favIds = await getFavoriteIds(userId);
   if (favIds.length === 0) return [];
 
-  // Fetch all batches and filter. 
-  // (In a larger app, we would use document lookups, but this is efficient for now)
   const allBatches = await getAllBatches();
   return allBatches.filter(b => b.id && favIds.includes(b.id));
+}
+
+// ⚙️ GLOBAL SETTINGS & ADMIN ACTIONS (NEWLY ADDED)
+
+// Get the current subscription fee (defaults to 5 if not set)
+export async function getSubscriptionFee() {
+  try {
+    const docRef = doc(db, "settings", "general");
+    const snap = await getDoc(docRef);
+    return snap.exists() ? snap.data().subscriptionFee : 5; // Default $5
+  } catch (error) {
+    console.error("Error fetching fee:", error);
+    return 5;
+  }
+}
+
+// Update the subscription fee
+export async function updateSubscriptionFee(newFee: number) {
+  try {
+    const docRef = doc(db, "settings", "general");
+    await setDoc(docRef, { subscriptionFee: newFee }, { merge: true });
+    return true;
+  } catch (error) {
+    console.error("Error updating fee:", error);
+    throw error;
+  }
+}
+
+// ✅ ACTIVATE USER (Manual Admin Approval)
+export async function activateUserSubscription(userId: string) {
+  try {
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, { 
+      subscriptionStatus: 'active',
+      subscriptionStartDate: new Date().toISOString()
+    });
+    return true;
+  } catch (error) {
+    console.error("Error activating user:", error);
+    throw error;
+  }
+}
+
+// 🛑 DEACTIVATE USER
+export async function deactivateUserSubscription(userId: string) {
+  try {
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, { subscriptionStatus: 'inactive' });
+    return true;
+  } catch (error) {
+    console.error("Error deactivating user:", error);
+    throw error;
+  }
 }
