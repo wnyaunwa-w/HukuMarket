@@ -1,7 +1,8 @@
 "use client";
 
 import { Batch } from "@/lib/db-service";
-import { Users, MapPin, ArrowRight, Heart, Star } from "lucide-react";
+// UPDATED: Removed 'Users' from imports as it's no longer needed
+import { MapPin, ArrowRight, Heart, Star } from "lucide-react";
 import { getGrowthStage } from "@/lib/chickenLogic";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -73,13 +74,11 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
   };
 
   return (
-    // UPDATED: Changed bg-white/border-slate-100 back to bg-huku-light/border-huku-tan
     <div className="bg-huku-light border-2 border-huku-tan rounded-3xl p-5 relative hover:shadow-xl transition-all hover:scale-[1.01] group">
       
       {/* ❤️ HEART ICON */}
       <button 
         onClick={handleToggleFavorite}
-        // Kept this white for contrast against the cream background
         className="absolute top-5 right-5 z-20 p-2 rounded-full bg-white hover:bg-orange-50 transition shadow-sm border border-huku-tan/50"
       >
         <Heart 
@@ -120,10 +119,11 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
           <span className="text-sm font-bold text-slate-500 mb-1 block">{batch.breed}</span>
           {/* 🔢 BOLD QUANTITY */}
           <div className="flex items-center gap-2">
-            <Users size={28} className="text-slate-800" />
+            {/* UPDATED: Replaced Users icon with Chicken emoji */}
+            <span className="text-3xl leading-none">🐔</span>
             <span className="text-4xl font-black text-slate-900 tracking-tight">{batch.count}</span>
           </div>
-          <span className="text-sm font-bold text-slate-500 ml-9">birds available</span>
+          <span className="text-sm font-bold text-slate-500 ml-11">birds available</span>
         </div>
         
         {/* Price */}
