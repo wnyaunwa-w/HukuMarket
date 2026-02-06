@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { 
   getAllUsers, 
+  getAllBatches, // 👈 Imported to count birds
   getSubscriptionFee, 
   updateSubscriptionFee, 
   activateUserSubscription, 
@@ -13,7 +14,8 @@ import {
 } from "@/lib/db-service";
 import { 
   Loader2, Search, DollarSign, CheckCircle, 
-  AlertCircle, Download, Trash2, Ban, Unlock 
+  AlertCircle, Download, Trash2, Ban, Unlock, 
+  Bird, Users, TrendingUp 
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -24,6 +26,13 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"approvals" | "registry">("approvals");
+  
+  // Stats State
+  const [stats, setStats] = useState({
+    totalBirds: 0,
+    activeSubs: 0,
+    totalRevenue: 0 // Estimated monthly revenue
+  });
   
   // Fee State
   const [fee, setFee] = useState(5);
@@ -42,20 +51,41 @@ export default function AdminPage() {
 
   async function loadData() {
     setLoading(true);
-    const [allUsers, currentFee] = await Promise.all([
-      getAllUsers(),
-      getSubscriptionFee()
-    ]);
-    setUsers(allUsers);
-    setFee(currentFee);
-    setNewFee(currentFee);
-    setLoading(false);
+    try {
+      const [allUsers, allBatches, currentFee] = await Promise.all([
+        getAllUsers(),
+        getAllBatches(), // Fetch batches to count birds
+        getSubscriptionFee()
+      ]);
+
+      // 1. Calculate Total Birds
+      const birdCount = allBatches.reduce((acc, batch) => acc + (batch.count || 0), 0);
+
+      // 2. Calculate Active Subs
+      const activeFarmers = allUsers.filter(u => u.role === 'farmer' && u.subscriptionStatus === 'active');
+      
+      setUsers(allUsers);
+      setFee(currentFee);
+      setNewFee(currentFee);
+      setStats({
+        totalBirds: birdCount,
+        activeSubs: activeFarmers.length,
+        totalRevenue: activeFarmers.length * currentFee
+      });
+
+    } catch (error) {
+      console.error("Failed to load admin data", error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const handleSaveFee = async () => {
     await updateSubscriptionFee(newFee);
     setFee(newFee);
     setIsEditingFee(false);
+    // Recalculate revenue estimate with new fee
+    setStats(prev => ({ ...prev, totalRevenue: prev.activeSubs * newFee }));
     alert("Fee updated successfully!");
   };
 
@@ -69,30 +99,24 @@ export default function AdminPage() {
     loadData();
   };
 
-  // 🛑 BLOCK USER
   const handleBlockUser = async (userId: string, currentBlockStatus: boolean) => {
     const action = currentBlockStatus ? "Unblock" : "Block";
     if(!confirm(`Are you sure you want to ${action} this user?`)) return;
-    
     await toggleUserBlock(userId, currentBlockStatus);
     loadData();
   };
 
-  // 🗑️ DELETE USER
   const handleDeleteUser = async (userId: string) => {
-    if(!confirm("⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE this user? This cannot be undone.")) return;
-    
+    if(!confirm("⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE this user?")) return;
     await deleteUser(userId);
     loadData();
   };
 
-  // 📥 DOWNLOAD CSV
   const downloadCSV = () => {
     const headers = ["Name,Email,Phone,Role,Subscription Status,Blocked Status"];
     const rows = users.map(u => 
       `"${u.displayName || ''}","${u.email || ''}","${u.phoneNumber || 'N/A'}","${u.role}","${u.subscriptionStatus || 'N/A'}","${u.isBlocked ? 'Yes' : 'No'}"`
     );
-    
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -118,48 +142,82 @@ export default function AdminPage() {
       {/* HEADER */}
       <div>
         <h1 className="text-3xl font-black text-slate-900">Super Admin Console 🛡️</h1>
-        <p className="text-slate-500">Manage fees, approvals, and user security.</p>
+        <p className="text-slate-500">Overview of platform activity and settings.</p>
       </div>
 
-      {/* 💰 FEE CARD */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="bg-green-100 p-4 rounded-full text-green-600">
-            <DollarSign size={32} />
+      {/* 📊 STATS GRID (Total Birds, Active Subs, Fee) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* CARD 1: TOTAL BIRDS */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div className="bg-orange-100 p-4 rounded-full text-huku-orange">
+            <Bird size={32} />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-slate-800">Subscription Fee</h3>
-            <p className="text-slate-500 text-sm">Monthly fee for farmers.</p>
+            <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Total Birds</p>
+            <h3 className="text-3xl font-black text-slate-900">{stats.totalBirds.toLocaleString()}</h3>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-            {isEditingFee ? (
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-2xl text-slate-400">$</span>
-                <input 
-                  type="number" 
-                  value={newFee}
-                  onChange={(e) => setNewFee(Number(e.target.value))}
-                  className="w-24 p-2 border-2 border-green-500 rounded-xl font-bold text-2xl text-slate-800 outline-none"
-                  autoFocus
-                />
-                <button onClick={handleSaveFee} className="bg-green-500 text-white px-4 py-2 rounded-lg font-bold text-sm">Save</button>
-                <button onClick={() => setIsEditingFee(false)} className="text-slate-400 hover:text-slate-600 text-sm font-bold">Cancel</button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-4">
-                <span className="font-black text-4xl text-slate-800">
-                  {fee === 0 ? "FREE" : `$${fee}`}
-                </span>
-                <button onClick={() => setIsEditingFee(true)} className="text-sm font-bold text-green-600 hover:bg-green-50 px-3 py-1 rounded-full transition">Change</button>
-              </div>
-            )}
+        {/* CARD 2: ACTIVE SUBS */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div className="bg-blue-100 p-4 rounded-full text-blue-600">
+            <Users size={32} />
+          </div>
+          <div>
+            <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Active Subs</p>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-3xl font-black text-slate-900">{stats.activeSubs}</h3>
+              <span className="text-xs text-slate-400 font-medium">Farmers</span>
+            </div>
+          </div>
         </div>
+
+        {/* CARD 3: SUBSCRIPTION FEE (Editable) */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="bg-green-100 p-4 rounded-full text-green-600">
+              <DollarSign size={32} />
+            </div>
+            <div>
+              <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Sub Fee</p>
+               {isEditingFee ? (
+                 <div className="flex items-center gap-1 mt-1">
+                   <input 
+                     type="number" 
+                     value={newFee}
+                     onChange={(e) => setNewFee(Number(e.target.value))}
+                     className="w-16 p-1 text-lg border-2 border-green-500 rounded-lg font-bold outline-none"
+                     autoFocus
+                   />
+                 </div>
+               ) : (
+                <h3 className="text-3xl font-black text-slate-900">{fee === 0 ? "FREE" : `$${fee}`}</h3>
+               )}
+            </div>
+          </div>
+
+          <div>
+             {isEditingFee ? (
+               <div className="flex flex-col gap-1">
+                 <button onClick={handleSaveFee} className="bg-green-500 text-white px-3 py-1 rounded text-xs font-bold">Save</button>
+                 <button onClick={() => setIsEditingFee(false)} className="text-slate-400 text-xs font-bold">Cancel</button>
+               </div>
+             ) : (
+               <button 
+                 onClick={() => setIsEditingFee(true)} 
+                 className="text-xs font-bold text-green-600 bg-green-50 hover:bg-green-100 px-3 py-2 rounded-lg transition"
+               >
+                 Change
+               </button>
+             )}
+          </div>
+        </div>
+
       </div>
 
       {/* TABS */}
-      <div className="flex gap-6 border-b border-slate-200">
+      <div className="flex gap-6 border-b border-slate-200 mt-8">
         <button 
           onClick={() => setActiveTab("approvals")}
           className={`pb-3 font-bold px-2 transition flex items-center gap-2 ${activeTab === 'approvals' ? 'text-huku-orange border-b-2 border-huku-orange' : 'text-slate-400'}`}
@@ -214,7 +272,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 👥 USER REGISTRY TAB (New) */}
+      {/* 👥 USER REGISTRY TAB */}
       {activeTab === 'registry' && (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-2">
           {/* Toolbar */}
