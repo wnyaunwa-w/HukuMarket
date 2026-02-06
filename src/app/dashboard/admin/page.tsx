@@ -2,8 +2,19 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { getAllUsers, getSubscriptionFee, updateSubscriptionFee, activateUserSubscription, deactivateUserSubscription } from "@/lib/db-service";
-import { Loader2, Search, ShieldCheck, DollarSign, CheckCircle, XCircle, Users, AlertCircle } from "lucide-react";
+import { 
+  getAllUsers, 
+  getSubscriptionFee, 
+  updateSubscriptionFee, 
+  activateUserSubscription, 
+  deactivateUserSubscription,
+  toggleUserBlock,
+  deleteUser
+} from "@/lib/db-service";
+import { 
+  Loader2, Search, DollarSign, CheckCircle, 
+  AlertCircle, Download, Trash2, Ban, Unlock 
+} from "lucide-react";
 
 export default function AdminPage() {
   const { currentUser } = useAuth();
@@ -12,7 +23,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"users" | "approvals">("approvals");
+  const [activeTab, setActiveTab] = useState<"approvals" | "registry">("approvals");
   
   // Fee State
   const [fee, setFee] = useState(5);
@@ -23,7 +34,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (currentUser && currentUser.email !== ADMIN_EMAIL) {
-      router.push("/dashboard"); // Kick out non-admins
+      router.push("/dashboard"); 
     } else if (currentUser) {
       loadData();
     }
@@ -48,38 +59,69 @@ export default function AdminPage() {
     alert("Fee updated successfully!");
   };
 
-  const handleToggleStatus = async (userId: string, currentStatus: string) => {
+  const handleToggleSubscription = async (userId: string, currentStatus: string) => {
     if (currentStatus === 'active') {
-      if(!confirm("Are you sure you want to deactivate this user?")) return;
+      if(!confirm("Deactivate this farmer's subscription?")) return;
       await deactivateUserSubscription(userId);
     } else {
       await activateUserSubscription(userId);
     }
-    loadData(); // Refresh list
+    loadData();
   };
 
-  // Filter lists
+  // 🛑 BLOCK USER
+  const handleBlockUser = async (userId: string, currentBlockStatus: boolean) => {
+    const action = currentBlockStatus ? "Unblock" : "Block";
+    if(!confirm(`Are you sure you want to ${action} this user?`)) return;
+    
+    await toggleUserBlock(userId, currentBlockStatus);
+    loadData();
+  };
+
+  // 🗑️ DELETE USER
+  const handleDeleteUser = async (userId: string) => {
+    if(!confirm("⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE this user? This cannot be undone.")) return;
+    
+    await deleteUser(userId);
+    loadData();
+  };
+
+  // 📥 DOWNLOAD CSV
+  const downloadCSV = () => {
+    const headers = ["Name,Email,Phone,Role,Subscription Status,Blocked Status"];
+    const rows = users.map(u => 
+      `"${u.displayName || ''}","${u.email || ''}","${u.phoneNumber || 'N/A'}","${u.role}","${u.subscriptionStatus || 'N/A'}","${u.isBlocked ? 'Yes' : 'No'}"`
+    );
+    
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `huku_users_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Filters
   const pendingFarmers = users.filter(u => u.role === 'farmer' && u.subscriptionStatus === 'inactive');
-  const activeFarmers = users.filter(u => u.role === 'farmer' && u.subscriptionStatus === 'active');
-  const allFiltered = users.filter(u => 
+  const filteredUsers = users.filter(u => 
     u.email?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     u.displayName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-huku-orange" /></div>;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8 pb-20">
       
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900">Super Admin Console 🛡️</h1>
-          <p className="text-slate-500">Manage subscriptions, approvals, and fees.</p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-black text-slate-900">Super Admin Console 🛡️</h1>
+        <p className="text-slate-500">Manage fees, approvals, and user security.</p>
       </div>
 
-      {/* 💰 FEE SETTING CARD */}
+      {/* 💰 FEE CARD */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="bg-green-100 p-4 rounded-full text-green-600">
@@ -87,7 +129,7 @@ export default function AdminPage() {
           </div>
           <div>
             <h3 className="font-bold text-lg text-slate-800">Subscription Fee</h3>
-            <p className="text-slate-500 text-sm">Amount farmers pay per month.</p>
+            <p className="text-slate-500 text-sm">Monthly fee for farmers.</p>
           </div>
         </div>
 
@@ -110,52 +152,46 @@ export default function AdminPage() {
                 <span className="font-black text-4xl text-slate-800">
                   {fee === 0 ? "FREE" : `$${fee}`}
                 </span>
-                <button 
-                  onClick={() => setIsEditingFee(true)}
-                  className="text-sm font-bold text-green-600 hover:bg-green-50 px-3 py-1 rounded-full transition"
-                >
-                  Change
-                </button>
+                <button onClick={() => setIsEditingFee(true)} className="text-sm font-bold text-green-600 hover:bg-green-50 px-3 py-1 rounded-full transition">Change</button>
               </div>
             )}
         </div>
       </div>
 
       {/* TABS */}
-      <div className="flex gap-4 border-b border-slate-200">
+      <div className="flex gap-6 border-b border-slate-200">
         <button 
           onClick={() => setActiveTab("approvals")}
-          className={`pb-3 font-bold px-2 transition ${activeTab === 'approvals' ? 'text-huku-orange border-b-2 border-huku-orange' : 'text-slate-400'}`}
+          className={`pb-3 font-bold px-2 transition flex items-center gap-2 ${activeTab === 'approvals' ? 'text-huku-orange border-b-2 border-huku-orange' : 'text-slate-400'}`}
         >
-          Payment Approvals {pendingFarmers.length > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1">{pendingFarmers.length}</span>}
+          Payment Approvals 
+          {pendingFarmers.length > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{pendingFarmers.length}</span>}
         </button>
         <button 
-          onClick={() => setActiveTab("users")}
-          className={`pb-3 font-bold px-2 transition ${activeTab === 'users' ? 'text-huku-orange border-b-2 border-huku-orange' : 'text-slate-400'}`}
+          onClick={() => setActiveTab("registry")}
+          className={`pb-3 font-bold px-2 transition ${activeTab === 'registry' ? 'text-huku-orange border-b-2 border-huku-orange' : 'text-slate-400'}`}
         >
-          All Users
+          User Registry
         </button>
       </div>
 
       {/* 🟢 APPROVALS TAB */}
       {activeTab === 'approvals' && (
-        <div className="space-y-4">
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
            <h3 className="font-bold text-slate-700 flex items-center gap-2">
              <AlertCircle size={20} className="text-orange-500"/> 
-             Farmers Awaiting Activation ({pendingFarmers.length})
+             Pending Activations
            </h3>
            
            {pendingFarmers.length === 0 ? (
-             <div className="p-10 text-center bg-slate-50 rounded-xl text-slate-400">
-               No pending approvals. Everyone is active! 🎉
+             <div className="p-10 text-center bg-slate-50 rounded-xl text-slate-400 border border-dashed border-slate-200">
+               All cleared! No pending payments. 
              </div>
            ) : (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                {pendingFarmers.map(user => (
                  <div key={user.id} className="bg-white p-5 rounded-2xl border border-orange-200 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 right-0 bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-bl-lg">
-                      INACTIVE
-                    </div>
+                    <div className="absolute top-0 right-0 bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-bl-lg">WAITING</div>
                     <div className="flex items-center gap-3 mb-3">
                       <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-500">
                         {user.displayName?.charAt(0)}
@@ -165,14 +201,12 @@ export default function AdminPage() {
                         <p className="text-xs text-slate-500">{user.email}</p>
                       </div>
                     </div>
-                    <div className="flex gap-2 mt-4">
-                      <button 
-                        onClick={() => handleToggleStatus(user.id, 'inactive')}
-                        className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition"
-                      >
-                        <CheckCircle size={16} /> Approve & Activate
-                      </button>
-                    </div>
+                    <button 
+                      onClick={() => handleToggleSubscription(user.id, 'inactive')}
+                      className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition"
+                    >
+                      <CheckCircle size={16} /> Activate
+                    </button>
                  </div>
                ))}
              </div>
@@ -180,64 +214,98 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 👥 ALL USERS TAB */}
-      {activeTab === 'users' && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex gap-2">
-            <Search className="text-slate-400" />
-            <input 
-              className="outline-none w-full text-sm" 
-              placeholder="Search users..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      {/* 👥 USER REGISTRY TAB (New) */}
+      {activeTab === 'registry' && (
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-2">
+          {/* Toolbar */}
+          <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row justify-between gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input 
+                className="pl-10 p-2 bg-slate-50 border border-slate-200 rounded-lg w-full outline-none focus:ring-2 ring-orange-100 text-sm" 
+                placeholder="Search name or email..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <button 
+              onClick={downloadCSV}
+              className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 transition"
+            >
+              <Download size={16} /> Export CSV
+            </button>
           </div>
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
-              <tr>
-                <th className="p-4">User</th>
-                <th className="p-4">Role</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allFiltered.map(user => (
-                <tr key={user.id} className="border-t border-slate-50 hover:bg-slate-50/50">
-                  <td className="p-4">
-                    <div className="font-bold text-slate-800">{user.displayName}</div>
-                    <div className="text-slate-400 text-xs">{user.email}</div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${user.role === 'farmer' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {user.role.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    {user.role === 'farmer' && (
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${user.subscriptionStatus === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {user.subscriptionStatus?.toUpperCase() || 'INACTIVE'}
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-4 text-right">
-                    {user.role === 'farmer' && (
-                      <button 
-                        onClick={() => handleToggleStatus(user.id, user.subscriptionStatus || 'inactive')}
-                        className={`text-xs font-bold px-3 py-1 rounded-lg border ${
-                          user.subscriptionStatus === 'active' 
-                          ? 'border-red-200 text-red-500 hover:bg-red-50' 
-                          : 'bg-green-500 text-white border-transparent hover:bg-green-600'
-                        }`}
-                      >
-                        {user.subscriptionStatus === 'active' ? 'Deactivate' : 'Activate'}
-                      </button>
-                    )}
-                  </td>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
+                <tr>
+                  <th className="p-4">User Details</th>
+                  <th className="p-4">Phone</th>
+                  <th className="p-4">Role</th>
+                  <th className="p-4">Sub. Status</th>
+                  <th className="p-4 text-center">Security Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredUsers.map(user => (
+                  <tr key={user.id} className={`hover:bg-slate-50/50 transition ${user.isBlocked ? 'bg-red-50/50' : ''}`}>
+                    <td className="p-4">
+                      <div className="font-bold text-slate-800 flex items-center gap-2">
+                        {user.displayName}
+                        {user.isBlocked && <span className="text-[10px] bg-red-600 text-white px-1.5 rounded">BLOCKED</span>}
+                      </div>
+                      <div className="text-slate-400 text-xs">{user.email}</div>
+                    </td>
+                    <td className="p-4 font-medium text-slate-600">
+                      {user.phoneNumber || <span className="text-slate-300 italic">N/A</span>}
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded text-xs font-bold ${user.role === 'farmer' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {user.role.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      {user.role === 'farmer' ? (
+                        <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold w-fit ${user.subscriptionStatus === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                          <div className={`w-2 h-2 rounded-full ${user.subscriptionStatus === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
+                          {user.subscriptionStatus?.toUpperCase() || 'INACTIVE'}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300">-</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center justify-center gap-2">
+                        {/* Block Button */}
+                        <button 
+                          onClick={() => handleBlockUser(user.id, user.isBlocked)}
+                          title={user.isBlocked ? "Unblock User" : "Block User"}
+                          className={`p-2 rounded-lg transition ${
+                            user.isBlocked 
+                            ? "bg-green-100 text-green-600 hover:bg-green-200" 
+                            : "bg-orange-100 text-orange-600 hover:bg-orange-200"
+                          }`}
+                        >
+                          {user.isBlocked ? <Unlock size={16} /> : <Ban size={16} />}
+                        </button>
+                        
+                        {/* Delete Button */}
+                        <button 
+                          onClick={() => handleDeleteUser(user.id)}
+                          title="Delete User"
+                          className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

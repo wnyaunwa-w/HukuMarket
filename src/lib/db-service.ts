@@ -282,4 +282,33 @@ export async function deactivateUserSubscription(userId: string) {
     console.error("Error deactivating user:", error);
     throw error;
   }
+}// ... existing code ...
+
+// 🚫 BLOCK/UNBLOCK USER (New)
+export async function toggleUserBlock(userId: string, isBlocked: boolean) {
+  try {
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, { 
+      isBlocked: !isBlocked 
+    });
+    return !isBlocked;
+  } catch (error) {
+    console.error("Error toggling block:", error);
+    throw error;
+  }
+}
+
+// 🗑️ DELETE USER (New)
+export async function deleteUser(userId: string) {
+  try {
+    // 1. Delete User Profile
+    await deleteDoc(doc(db, "users", userId));
+    
+    // Note: In a real production app, you would also use a Cloud Function 
+    // to delete them from Firebase Auth, but this effectively hides them from the app.
+    return true;
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    throw error;
+  }
 }
