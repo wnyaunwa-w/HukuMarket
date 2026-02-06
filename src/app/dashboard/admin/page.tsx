@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { 
   getAllUsers, 
-  getAllBatches, // 👈 Imported to count birds
+  getAllBatches, 
   getSubscriptionFee, 
   updateSubscriptionFee, 
   activateUserSubscription, 
@@ -15,7 +15,7 @@ import {
 import { 
   Loader2, Search, DollarSign, CheckCircle, 
   AlertCircle, Download, Trash2, Ban, Unlock, 
-  Bird, Users, TrendingUp 
+  Bird, Users
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -31,7 +31,7 @@ export default function AdminPage() {
   const [stats, setStats] = useState({
     totalBirds: 0,
     activeSubs: 0,
-    totalRevenue: 0 // Estimated monthly revenue
+    totalRevenue: 0 
   });
   
   // Fee State
@@ -52,11 +52,15 @@ export default function AdminPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [allUsers, allBatches, currentFee] = await Promise.all([
+      const [usersData, batchesData, currentFee] = await Promise.all([
         getAllUsers(),
-        getAllBatches(), // Fetch batches to count birds
+        getAllBatches(), 
         getSubscriptionFee()
       ]);
+
+      // ⚠️ FIX: Cast usersData to 'any[]' so TypeScript knows it has 'role' and 'status'
+      const allUsers = usersData as any[]; 
+      const allBatches = batchesData as any[];
 
       // 1. Calculate Total Birds
       const birdCount = allBatches.reduce((acc, batch) => acc + (batch.count || 0), 0);
