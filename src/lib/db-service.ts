@@ -231,7 +231,7 @@ export async function getFavoriteBatches(userId: string): Promise<Batch[]> {
   return allBatches.filter(b => b.id && favIds.includes(b.id));
 }
 
-// ⚙️ GLOBAL SETTINGS & ADMIN ACTIONS (NEWLY ADDED)
+// ⚙️ GLOBAL SETTINGS & ADMIN ACTIONS
 
 // Get the current subscription fee (defaults to 5 if not set)
 export async function getSubscriptionFee() {
@@ -257,13 +257,21 @@ export async function updateSubscriptionFee(newFee: number) {
   }
 }
 
-// ✅ ACTIVATE USER (Manual Admin Approval)
+// ✅ ACTIVATE USER (Updated with Expiry Calculation)
 export async function activateUserSubscription(userId: string) {
   try {
     const userRef = doc(db, "users", userId);
+    
+    // 1. Calculate dates
+    const startDate = new Date();
+    const expiryDate = new Date();
+    expiryDate.setDate(startDate.getDate() + 30); // Add 30 days
+    
+    // 2. Save to database
     await updateDoc(userRef, { 
       subscriptionStatus: 'active',
-      subscriptionStartDate: new Date().toISOString()
+      subscriptionStartDate: startDate.toISOString(),
+      subscriptionExpiryDate: expiryDate.toISOString() // 👈 New Field
     });
     return true;
   } catch (error) {
@@ -282,9 +290,9 @@ export async function deactivateUserSubscription(userId: string) {
     console.error("Error deactivating user:", error);
     throw error;
   }
-}// ... existing code ...
+}
 
-// 🚫 BLOCK/UNBLOCK USER (New)
+// 🚫 BLOCK/UNBLOCK USER
 export async function toggleUserBlock(userId: string, isBlocked: boolean) {
   try {
     const userRef = doc(db, "users", userId);
@@ -298,7 +306,7 @@ export async function toggleUserBlock(userId: string, isBlocked: boolean) {
   }
 }
 
-// 🗑️ DELETE USER (New)
+// 🗑️ DELETE USER
 export async function deleteUser(userId: string) {
   try {
     // 1. Delete User Profile
