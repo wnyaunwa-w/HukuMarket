@@ -319,4 +319,15 @@ export async function deleteUser(userId: string) {
     console.error("Error deleting user:", error);
     throw error;
   }
+}// ... existing code ...
+
+// 🗑️ DELETE BATCH (Farmer Dashboard)
+export async function deleteBatch(batchId: string) {
+  try {
+    await deleteDoc(doc(db, "batches", batchId));
+    return true;
+  } catch (error) {
+    console.error("Error deleting batch:", error);
+    throw error;
+  }
 }
