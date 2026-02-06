@@ -58,7 +58,7 @@ export default function AdminPage() {
         getSubscriptionFee()
       ]);
 
-      // ⚠️ FIX: Cast usersData to 'any[]' so TypeScript knows it has 'role' and 'status'
+      // Cast usersData to 'any[]' so TypeScript knows it has 'role' and 'status'
       const allUsers = usersData as any[]; 
       const allBatches = batchesData as any[];
 
@@ -149,75 +149,79 @@ export default function AdminPage() {
         <p className="text-slate-500">Overview of platform activity and settings.</p>
       </div>
 
-      {/* 📊 STATS GRID (Total Birds, Active Subs, Fee) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* 📊 UPDATED STATS GRID (Responsive) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
         
         {/* CARD 1: TOTAL BIRDS */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="bg-orange-100 p-4 rounded-full text-huku-orange">
-            <Bird size={32} />
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-huku-orange/30 transition-colors">
+          <div className="bg-orange-50 p-3 md:p-4 rounded-xl text-huku-orange shrink-0">
+            <Bird size={28} className="md:w-8 md:h-8" />
           </div>
-          <div>
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Total Birds</p>
-            <h3 className="text-3xl font-black text-slate-900">{stats.totalBirds.toLocaleString()}</h3>
+          <div className="min-w-0">
+            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest truncate">Total Birds</p>
+            <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
+              {stats.totalBirds.toLocaleString()}
+            </h3>
           </div>
         </div>
 
         {/* CARD 2: ACTIVE SUBS */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="bg-blue-100 p-4 rounded-full text-blue-600">
-            <Users size={32} />
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-blue-200 transition-colors">
+          <div className="bg-blue-50 p-3 md:p-4 rounded-xl text-blue-600 shrink-0">
+            <Users size={28} className="md:w-8 md:h-8" />
           </div>
-          <div>
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Active Subs</p>
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-3xl font-black text-slate-900">{stats.activeSubs}</h3>
-              <span className="text-xs text-slate-400 font-medium">Farmers</span>
+          <div className="min-w-0">
+            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest truncate">Active Subs</p>
+            <div className="flex items-baseline gap-1">
+              <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">{stats.activeSubs}</h3>
+              <span className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-tighter">Farmers</span>
             </div>
           </div>
         </div>
 
-        {/* CARD 3: SUBSCRIPTION FEE (Editable) */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-green-100 p-4 rounded-full text-green-600">
-              <DollarSign size={32} />
+        {/* CARD 3: SUBSCRIPTION FEE */}
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-4 sm:col-span-2 lg:col-span-1 hover:border-green-200 transition-colors">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="bg-green-50 p-3 md:p-4 rounded-xl text-green-600 shrink-0">
+              <DollarSign size={28} className="md:w-8 md:h-8" />
             </div>
-            <div>
-              <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Sub Fee</p>
+            <div className="min-w-0">
+              <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest truncate">Monthly Fee</p>
                {isEditingFee ? (
                  <div className="flex items-center gap-1 mt-1">
+                   <span className="font-bold text-slate-400">$</span>
                    <input 
                      type="number" 
                      value={newFee}
                      onChange={(e) => setNewFee(Number(e.target.value))}
-                     className="w-16 p-1 text-lg border-2 border-green-500 rounded-lg font-bold outline-none"
+                     className="w-16 p-1 text-lg border-b-2 border-green-500 bg-transparent font-bold outline-none"
                      autoFocus
                    />
                  </div>
                ) : (
-                <h3 className="text-3xl font-black text-slate-900">{fee === 0 ? "FREE" : `$${fee}`}</h3>
+                <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
+                  {fee === 0 ? "FREE" : `$${fee}`}
+                </h3>
                )}
             </div>
           </div>
 
-          <div>
+          <div className="shrink-0">
              {isEditingFee ? (
                <div className="flex flex-col gap-1">
-                 <button onClick={handleSaveFee} className="bg-green-500 text-white px-3 py-1 rounded text-xs font-bold">Save</button>
-                 <button onClick={() => setIsEditingFee(false)} className="text-slate-400 text-xs font-bold">Cancel</button>
+                 <button onClick={handleSaveFee} className="bg-green-600 text-white px-3 py-1 rounded-lg text-[10px] font-bold shadow-sm">SAVE</button>
+                 <button onClick={() => setIsEditingFee(false)} className="text-slate-400 text-[10px] font-bold hover:text-slate-600">CANCEL</button>
                </div>
              ) : (
                <button 
                  onClick={() => setIsEditingFee(true)} 
-                 className="text-xs font-bold text-green-600 bg-green-50 hover:bg-green-100 px-3 py-2 rounded-lg transition"
+                 className="text-[10px] font-bold text-green-700 bg-green-50 hover:bg-green-100 px-3 py-2 rounded-lg border border-green-100 transition-all"
                >
-                 Change
+                 CHANGE
                </button>
              )}
           </div>
         </div>
-
       </div>
 
       {/* TABS */}
