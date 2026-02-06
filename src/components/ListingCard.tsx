@@ -70,12 +70,14 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
   };
 
   return (
-    <div className={`relative bg-huku-light border-2 border-huku-tan rounded-3xl p-5 transition-all group overflow-hidden ${isSoldOut ? "grayscale opacity-75 hover:scale-100" : "hover:shadow-xl hover:scale-[1.01]"}`}>
+    // UPDATED: Removed 'grayscale opacity-75'. Added 'cursor-not-allowed' when sold out.
+    <div className={`relative bg-huku-light border-2 border-huku-tan rounded-3xl p-5 transition-all group overflow-hidden ${isSoldOut ? "hover:scale-100 cursor-not-allowed" : "hover:shadow-xl hover:scale-[1.01]"}`}>
       
-      {/* 🚫 SOLD OUT OVERLAY (Only shows if count is 0) */}
+      {/* 🚫 SOLD OUT OVERLAY (Updated style) */}
       {isSoldOut && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
-          <div className="border-4 border-red-600/50 text-red-600/50 font-black text-5xl uppercase p-4 -rotate-12 rounded-xl tracking-widest bg-white/10 backdrop-blur-[2px]">
+        <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none p-6">
+          {/* UPDATED: Smaller font (text-3xl), bolder red color, reduced padding */}
+          <div className="border-4 border-red-700 text-red-700 font-black text-3xl uppercase p-3 -rotate-12 rounded-xl tracking-widest bg-white/20 backdrop-blur-[2px] shadow-sm">
             Sold Out
           </div>
         </div>
@@ -160,7 +162,7 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         disabled={isSoldOut}
         className={`w-full py-3.5 rounded-xl font-bold border-2 transition-all duration-300 flex items-center justify-center gap-2 ${
             isSoldOut 
-            ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed" 
+            ? "bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed" 
             : "bg-white border-huku-tan/50 text-slate-700 hover:border-green-500 hover:text-green-700 hover:bg-green-50/50 hover:shadow-md"
         }`}
       >
