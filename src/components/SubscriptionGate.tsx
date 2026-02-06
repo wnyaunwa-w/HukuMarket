@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ShieldCheck } from "lucide-react";
-import { getSubscriptionFee } from "@/lib/db-service"; // Import the helper
+import { getSubscriptionFee } from "@/lib/db-service";
 
 export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
@@ -63,7 +63,8 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
           {fee > 0 && (
              <div className="bg-slate-50 p-3 rounded-lg text-xs text-slate-500 text-left">
               <strong>How to pay:</strong><br/>
-              1. Send ${fee} via Innbucks to: <strong>+263 77 123 4567</strong><br/>
+              {/* UPDATED: Added EcoCash to the text below */}
+              1. Send ${fee} via Innbucks or EcoCash to: <strong>+263 77 123 4567</strong><br/>
               2. Send proof of payment to WhatsApp below.<br/>
               3. We will approve & activate your account.
             </div>
