@@ -1,147 +1,124 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeToBatches, Batch } from "@/lib/db-service";
-import { calculateBatchMetrics, BREEDS } from "@/lib/chickenLogic";
-import { UpdateStockModal } from "@/components/UpdateStockModal"; 
-import { MapPin, User, Calendar, PlusCircle, AlertCircle } from "lucide-react";
+import { subscribeToBatches, Batch, deleteBatch } from "@/lib/db-service";
+import { getGrowthStage } from "@/lib/chickenLogic"; // 👈 UPDATED IMPORT
+import { Loader2, PlusCircle, Trash2, MapPin, Calendar, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { RecordSaleModal } from "@/components/RecordSaleModal";
 
-export default function MyListings() {
-  const { currentUser, loading } = useAuth();
+export default function MyListingsPage() {
+  const { currentUser } = useAuth();
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
-  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
 
-  // Redirect if not logged in
-  useEffect(() => {
-    if (!loading && !currentUser) {
-      router.push("/login");
-    }
-  }, [currentUser, loading, router]);
-
-  // Listen to your specific batches
   useEffect(() => {
     if (currentUser) {
       const unsubscribe = subscribeToBatches(currentUser.uid, (data) => {
         setBatches(data);
+        setLoading(false);
       });
       return () => unsubscribe();
     }
   }, [currentUser]);
 
-  if (loading) return <div className="p-10 text-center text-slate-400">Loading listings...</div>;
+  const handleDelete = async (batchId: string) => {
+    if (confirm("Are you sure you want to delete this listing?")) {
+      await deleteBatch(batchId);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-huku-orange" /></div>;
 
   return (
-    <div className="max-w-5xl mx-auto py-6">
-      
-      {/* Header Section */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">My Listings 📋</h1>
-          <p className="text-slate-500">Manage your active chicken stock.</p>
-        </div>
-        <Link 
-          href="/dashboard/listings/new" 
-          className="bg-orange-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-orange-700 transition flex items-center gap-2 shadow-lg hover:shadow-orange-200"
-        >
-          <PlusCircle size={20} /> New Listing
+    <div className="max-w-4xl mx-auto pb-20">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-black text-slate-900">My Listings</h1>
+        <Link href="/dashboard/listings/new" className="bg-huku-orange text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-orange-600 transition">
+          <PlusCircle size={20} /> New Batch
         </Link>
       </div>
 
-      {/* Empty State */}
-      {batches.length === 0 ? (
-        <div className="bg-white p-12 rounded-2xl border border-dashed border-slate-300 text-center">
-          <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle size={32} />
+      <div className="space-y-4">
+        {batches.length === 0 ? (
+          <div className="text-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+            <p className="text-slate-400 mb-4">You haven't listed any chickens yet.</p>
+            <Link href="/dashboard/listings/new" className="text-huku-orange font-bold hover:underline">Create your first listing</Link>
           </div>
-          <h3 className="text-lg font-bold text-slate-900 mb-2">No active listings</h3>
-          <p className="text-slate-500 mb-6 max-w-sm mx-auto">
-            You haven't listed any chickens yet. Create your first batch to start selling to buyers near you.
-          </p>
-          <Link 
-             href="/dashboard/listings/new" 
-             className="text-orange-600 font-bold hover:underline"
-          >
-            Create a Listing Now →
-          </Link>
-        </div>
-      ) : (
-        /* Grid of Listings */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {batches.map((batch) => {
-            const metrics = calculateBatchMetrics(batch.hatchDate, batch.breed);
+        ) : (
+          batches.map((batch) => {
+            // 👇 UPDATED: Using the new helper function
+            const { stage, progress, daysLeft, marketReadyDate } = getGrowthStage(batch.hatchDate);
             
             return (
-              <div key={batch.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col relative overflow-hidden group hover:border-orange-200 transition">
+              <div key={batch.id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition relative group">
                 
-                {/* Status Badge */}
-                <div className={`absolute top-0 right-0 px-4 py-1.5 text-xs font-bold rounded-bl-2xl ${metrics.statusColor}`}>
-                  {metrics.status}
-                </div>
+                {/* Delete Button */}
+                <button 
+                  onClick={() => batch.id && handleDelete(batch.id)}
+                  className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition"
+                  title="Delete Batch"
+                >
+                  <Trash2 size={18} />
+                </button>
 
-                <div className="mb-4 pr-10">
-                  <h3 className="font-bold text-xl text-slate-900 mb-1">
-                    {BREEDS[batch.breed as keyof typeof BREEDS]?.name || batch.breed}
-                  </h3>
-                  <p className="text-sm text-slate-500 flex items-center gap-1">
-                    <MapPin size={14} /> {batch.location}
-                  </p>
-                </div>
+                <div className="flex flex-col md:flex-row gap-6">
+                  {/* Status Column */}
+                  <div className="shrink-0 flex flex-col items-center justify-center bg-slate-50 rounded-xl w-24 h-24 border border-slate-100">
+                    <span className="text-3xl">🐔</span>
+                    <span className="font-black text-slate-900 text-lg">{batch.count}</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold">Birds</span>
+                  </div>
 
-                {/* Metrics Grid */}
-                <div className="grid grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <div>
-                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Quantity</p>
-                    <p className="font-bold text-slate-800 text-lg flex items-center gap-1">
-                      <User size={16} className="text-slate-400"/> {batch.count}
+                  {/* Info Column */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-lg text-slate-900">{batch.breed}</h3>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${daysLeft <= 0 ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-600'}`}>
+                        {stage}
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-4 text-sm text-slate-500 mb-4">
+                      <div className="flex items-center gap-1">
+                        <MapPin size={14} /> {batch.location}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar size={14} /> Ready: <span className="text-slate-700 font-medium">{marketReadyDate}</span>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${progress}%` }}></div>
+                    </div>
+                    <p className="text-xs text-slate-400 text-right">
+                      {daysLeft > 0 ? `${daysLeft} days to maturity` : "Market Ready"}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Market Ready</p>
-                    <p className="font-bold text-green-700 text-lg flex items-center gap-1">
-                      <Calendar size={16} className="text-green-500"/> {metrics.marketReadyDate}
-                    </p>
-                  </div>
                 </div>
 
-                {/* Progress Bar */}
-                <div className="mb-6">
-                  <div className="flex justify-between text-xs font-medium text-slate-500 mb-1">
-                    <span>Day {metrics.ageInDays}</span>
-                    <span>{Math.round(metrics.progress)}% Grown</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div 
-                      className="bg-orange-500 h-2 rounded-full transition-all duration-1000" 
-                      style={{ width: `${metrics.progress}%` }}
-                    ></div>
-                  </div>
+                {/* Actions Footer */}
+                <div className="mt-4 pt-4 border-t border-slate-50 flex justify-end">
+                   <button 
+                     onClick={() => setSelectedBatch(batch)}
+                     className="text-sm font-bold text-huku-orange hover:bg-orange-50 px-4 py-2 rounded-lg transition"
+                   >
+                     Record Sale
+                   </button>
                 </div>
-
-                {/* Actions */}
-                <div className="mt-auto flex gap-3">
-                  <button 
-                    onClick={() => setEditingBatch(batch)}
-                    className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg shadow-slate-200"
-                  >
-                    Update Stock 📉
-                  </button>
-                  {/* You could add an 'Edit Listing' button here in the future */}
-                </div>
-
               </div>
             );
-          })}
-        </div>
-      )}
+          })
+        )}
+      </div>
 
-      {/* Stock Update Modal */}
-      {editingBatch && (
-        <UpdateStockModal 
-          batch={editingBatch} 
-          onClose={() => setEditingBatch(null)} 
+      {selectedBatch && (
+        <RecordSaleModal 
+          batch={selectedBatch} 
+          onClose={() => setSelectedBatch(null)} 
         />
       )}
     </div>
