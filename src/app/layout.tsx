@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 // 1. We import the provider we built
 import { AuthProvider } from "@/context/AuthContext"; 
+import { Footer } from "@/components/Footer"; // 👈 Import Footer
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -38,10 +39,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        {/* 4. We WRAP the app with the Provider here */}
+      {/* 4. Layout Structure: flex-col ensures footer stays at bottom */}
+      <body className={`${inter.className} min-h-screen flex flex-col bg-slate-50`}>
+        
+        {/* 5. We WRAP the app with the Provider here */}
         <AuthProvider>
-          {children}
+          
+          {/* Main Content Area (grows to fill space) */}
+          <main className="flex-1">
+            {children}
+          </main>
+
+          {/* Footer Component */}
+          <Footer />
+          
         </AuthProvider>
       </body>
     </html>
