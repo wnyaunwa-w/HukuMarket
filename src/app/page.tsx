@@ -47,12 +47,12 @@ function MarketContent() {
 
   return (
     <>
-      {/* 🏡 RESTORED HERO SECTION */}
+      {/* 🏡 HERO SECTION */}
       <div className="relative h-[550px] flex items-center justify-center bg-slate-900">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
           <img 
-            src="https://images.unsplash.com/photo-1563205886-d440026e6328?q=80&w=2000&auto=format&fit=crop" 
+            src="/hero-bg.jpg" // 👈 Updated to use your local image
             className="w-full h-full object-cover brightness-[0.55]" 
             alt="Poultry Farm Background"
             onError={(e) => {
@@ -72,7 +72,7 @@ function MarketContent() {
             Connect directly with local broiler producers to buy healthy, market-ready chickens.
           </p>
 
-          {/* Fixed Search Bar Container */}
+          {/* Search Bar Container */}
           <div className="bg-white p-2 rounded-2xl shadow-2xl flex items-center max-w-xl mx-auto border-4 border-white/20">
              <div className="bg-slate-50 p-3 rounded-xl text-slate-400 ml-1">
                <Search size={24} />
@@ -138,7 +138,7 @@ function MarketContent() {
   );
 }
 
-// Main Page wrapper with Suspense (required for searchParams in Next.js)
+// Main Page wrapper with Suspense
 export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50 pb-32">
