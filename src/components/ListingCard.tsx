@@ -18,14 +18,12 @@ interface ListingCardProps {
 }
 
 export function ListingCard({ batch, onContact }: ListingCardProps) {
-  // Growth calculation
   const { stage, progress, daysLeft } = getGrowthStage(batch.hatchDate);
-  const isSoldOut = batch.count === 0; // 👈 Check if sold out
+  const isSoldOut = batch.count === 0;
   
   const { currentUser } = useAuth();
   const [isFavorite, setIsFavorite] = useState(false);
   
-  // New state for Farmer details
   const [farmerName, setFarmerName] = useState("Farmer");
   const [farmerPhoto, setFarmerPhoto] = useState<string | null>(null);
   const [rating, setRating] = useState<number | null>(null);
@@ -70,13 +68,15 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
   };
 
   return (
-    // UPDATED: Removed 'grayscale opacity-75'. Added 'cursor-not-allowed' when sold out.
-    <div className={`relative bg-huku-light border-2 border-huku-tan rounded-3xl p-5 transition-all group overflow-hidden ${isSoldOut ? "hover:scale-100 cursor-not-allowed" : "hover:shadow-xl hover:scale-[1.01]"}`}>
+    // 👇 ADDED id={batch.id} HERE
+    <div 
+      id={batch.id} 
+      className={`relative bg-huku-light border-2 border-huku-tan rounded-3xl p-5 transition-all group overflow-hidden ${isSoldOut ? "hover:scale-100 cursor-not-allowed" : "hover:shadow-xl hover:scale-[1.01]"}`}
+    >
       
-      {/* 🚫 SOLD OUT OVERLAY (Updated style) */}
+      {/* 🚫 SOLD OUT OVERLAY */}
       {isSoldOut && (
         <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none p-6">
-          {/* UPDATED: Smaller font (text-3xl), bolder red color, reduced padding */}
           <div className="border-4 border-red-700 text-red-700 font-black text-3xl uppercase p-3 -rotate-12 rounded-xl tracking-widest bg-white/20 backdrop-blur-[2px] shadow-sm">
             Sold Out
           </div>
@@ -156,7 +156,7 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         <span className="font-medium leading-snug line-clamp-2">{batch.location}</span>
       </div>
 
-      {/* ACTION BUTTON (Disabled if Sold Out) */}
+      {/* ACTION BUTTON */}
       <button 
         onClick={() => onContact(batch)}
         disabled={isSoldOut}

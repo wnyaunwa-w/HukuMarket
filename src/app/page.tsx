@@ -1,88 +1,107 @@
 "use client";
-import { useState, useEffect } from "react";
-import Image from "next/image";
+
+import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
+import { getAllBatches, Batch } from "@/lib/db-service";
 import { ListingCard } from "@/components/ListingCard";
 import { ContactModal } from "@/components/ContactModal";
-import { getAllBatches, Batch } from "@/lib/db-service";
-import { Search, Loader2 } from "lucide-react";
+import { Loader2, Search, MapPin } from "lucide-react";
+import { useSearchParams } from "next/navigation"; // 👈 Import Search Params
 
 export default function Home() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get('highlight'); // 👈 Get the ID from URL
 
   useEffect(() => {
-    async function loadData() {
+    async function loadBatches() {
       const data = await getAllBatches();
       setBatches(data);
       setLoading(false);
     }
-    loadData();
+    loadBatches();
   }, []);
 
-  const filteredBatches = batches.filter((b) =>
-    b.location.toLowerCase().includes(searchQuery.toLowerCase())
+  // 👇 AUTO-SCROLL LOGIC
+  useEffect(() => {
+    if (!loading && highlightId) {
+      const element = document.getElementById(highlightId);
+      if (element) {
+        // Wait a split second for layout to settle
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Optional: Add a temporary highlight effect
+          element.classList.add('ring-4', 'ring-huku-orange');
+          setTimeout(() => element.classList.remove('ring-4', 'ring-huku-orange'), 2000);
+        }, 500);
+      }
+    }
+  }, [loading, highlightId]);
+
+  const filteredBatches = batches.filter(batch => 
+    batch.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    batch.breed.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 pb-20">
       <Navbar />
 
-      {/* 🎨 HERO SECTION */}
-      <section className="relative py-24 px-4 text-center overflow-hidden bg-huku-tan isolate">
+      {/* HERO SECTION */}
+      <div className="relative bg-slate-900 h-[500px] flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 opacity-40">
+           <img 
+             src="https://images.unsplash.com/photo-1563205886-d440026e6328?q=80&w=2000&auto=format&fit=crop" 
+             className="w-full h-full object-cover"
+             alt="Poultry Farm"
+           />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
         
-        {/* 1. BACKGROUND IMAGE (Bottom Layer) */}
-        <Image
-          src="/hero-bg.jpg" 
-          alt="Poultry Farm Background"
-          fill
-          priority
-          className="object-cover"
-          unoptimized
-        />
-
-        {/* 2. DARK OVERLAY (Middle Layer) */}
-        {/* UPDATED: Changed from bg-black/50 to bg-black/30 for better visibility */}
-        <div className="absolute inset-0 bg-black/30" />
-
-        {/* 3. CONTENT (Top Layer) */}
-        <div className="relative z-10 max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-6xl font-black text-white mb-6 drop-shadow-sm">
-            Zimbabwe's Poultry Marketplace 🇿🇼
+        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto mt-10">
+          <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-tight tracking-tight">
+            Zimbabwe's Poultry <br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-huku-orange to-yellow-400">Marketplace 🇿🇼</span>
           </h1>
-          <p className="text-xl text-white/90 mb-10 font-medium max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg text-slate-200 mb-10 font-medium max-w-2xl mx-auto">
             Connect directly with local broiler producers to buy healthy, market-ready chickens.
           </p>
 
-          {/* Search Bar */}
-          <div className="relative max-w-xl mx-auto group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-huku-orange transition-colors" size={20} />
-            <input
-              type="text"
-              placeholder="Search by Location (e.g. Ruwa)"
-              className="w-full pl-14 pr-6 py-5 rounded-2xl shadow-xl outline-none focus:ring-4 ring-white/30 text-lg transition-all text-slate-800 placeholder:text-slate-400 bg-white"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          {/* SEARCH BAR */}
+          <div className="bg-white p-2 rounded-full shadow-2xl flex items-center max-w-xl mx-auto transition-transform hover:scale-[1.02]">
+             <div className="bg-slate-100 p-3 rounded-full text-slate-400 ml-1">
+               <Search size={24} />
+             </div>
+             <input 
+               type="text" 
+               placeholder="Search by Location (e.g. Ruwa)" 
+               className="flex-1 px-4 py-3 outline-none text-slate-700 font-bold placeholder:text-slate-300 placeholder:font-medium"
+               value={searchTerm}
+               onChange={(e) => setSearchTerm(e.target.value)}
+             />
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Listings Section (Unchanged) */}
-      <section className="max-w-6xl mx-auto px-4 py-12">
-        <div className="flex justify-between items-end mb-8">
-          <h2 className="text-3xl font-bold text-slate-900">Fresh Listings</h2>
-          <p className="text-slate-500 font-medium">{filteredBatches.length} producers found</p>
+      {/* LISTINGS GRID */}
+      <div className="max-w-7xl mx-auto px-4 -mt-20 relative z-20">
+        <div className="flex items-center gap-2 mb-6 ml-2">
+           <div className="bg-huku-orange p-2 rounded-lg text-white shadow-lg">
+             <MapPin size={20} />
+           </div>
+           <h2 className="text-white font-bold text-xl drop-shadow-md">Active Listings</h2>
         </div>
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="animate-spin text-huku-orange" size={48} />
+            <Loader2 className="animate-spin text-white" size={48} />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredBatches.map((batch) => (
               <ListingCard 
                 key={batch.id} 
@@ -92,21 +111,20 @@ export default function Home() {
             ))}
           </div>
         )}
-
+        
         {!loading && filteredBatches.length === 0 && (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-300">
-            <p className="text-slate-400 text-lg">No producers found in this location yet.</p>
+          <div className="bg-white p-12 rounded-3xl text-center shadow-sm">
+            <p className="text-slate-400 font-bold">No chickens found in this area yet.</p>
           </div>
         )}
-      </section>
+      </div>
 
-      {/* Modals */}
       {selectedBatch && (
         <ContactModal 
           batch={selectedBatch} 
           onClose={() => setSelectedBatch(null)} 
         />
       )}
-    </main>
+    </div>
   );
 }
