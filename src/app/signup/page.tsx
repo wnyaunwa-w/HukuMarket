@@ -11,23 +11,25 @@ import {
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
-import { Loader2, User, Tractor, CheckCircle2 } from "lucide-react";
+import { 
+  Loader2, User, Tractor, CheckCircle2, 
+  Eye, EyeOff // 👈 Added eye icons
+} from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // 👈 State for visibility
   const [name, setName] = useState("");
   const [role, setRole] = useState<"buyer" | "farmer">("buyer");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Helper to save user to DB
   const saveUserToDB = async (user: any) => {
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
 
-    // Only set if new, or update role if missing
     if (!userSnap.exists()) {
       await setDoc(userRef, {
         uid: user.uid,
@@ -35,15 +37,14 @@ export default function SignupPage() {
         displayName: user.displayName || name,
         photoURL: user.photoURL || null,
         createdAt: serverTimestamp(),
-        role: role, // 👈 Saves the selected role (Buyer/Farmer)
+        role: role,
         subscriptionStatus: role === 'farmer' ? 'inactive' : 'active',
         isBlocked: false,
-        agreedToTerms: true // Record consent
+        agreedToTerms: true
       });
     }
   };
 
-  // 📧 Email Signup
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -62,7 +63,6 @@ export default function SignupPage() {
     }
   };
 
-  // 🇬 Google Signup
   const handleGoogleSignup = async () => {
     setLoading(true);
     setError("");
@@ -130,7 +130,23 @@ export default function SignupPage() {
 
           <div>
             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Password</label>
-            <input type="password" required placeholder="••••••••" className="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-huku-orange outline-none transition" value={password} onChange={e => setPassword(e.target.value)} />
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} // 👈 Toggle type
+                required 
+                placeholder="••••••••" 
+                className="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-huku-orange outline-none transition pr-12" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           {/* LEGAL CONSENT CHECKBOX */}
@@ -156,7 +172,6 @@ export default function SignupPage() {
           <span className="relative bg-white px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Or continue with</span>
         </div>
 
-        {/* GOOGLE BUTTON */}
         <button 
           type="button"
           onClick={handleGoogleSignup}
