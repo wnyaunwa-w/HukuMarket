@@ -1,18 +1,21 @@
 {
-    "name": "HukuMarket",
-    "short_name": "HukuMarket",
-    "description": "Zimbabwe's Poultry Marketplace",
-    "start_url": "/",
-    "display": "standalone",
-    "background_color": "#FAEDCD",
-    "theme_color": "#FB8500",
-    "orientation": "portrait",
-    "icons": [
-      {
-        "src": "/icon.png",
-        "sizes": "512x512",
-        "type": "image/png",
-        "purpose": "maskable"
-      }
-    ]
-  }
+  "name": "HukuMarket",
+  "short_name": "HukuMarket",
+  "description": "Zimbabwe's #1 Poultry Marketplace",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FB8500",
+  "theme_color": "#FB8500",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
