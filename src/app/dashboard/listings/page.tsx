@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeToBatches, Batch, deleteBatch } from "@/lib/db-service";
-import { getGrowthStage } from "@/lib/chickenLogic"; // 👈 UPDATED IMPORT
-import { Loader2, PlusCircle, Trash2, MapPin, Calendar, AlertCircle } from "lucide-react";
+import { getGrowthStage } from "@/lib/chickenLogic";
+import { Loader2, PlusCircle, Trash2, MapPin, Calendar, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { RecordSaleModal } from "@/components/RecordSaleModal";
 
@@ -49,7 +49,6 @@ export default function MyListingsPage() {
           </div>
         ) : (
           batches.map((batch) => {
-            // 👇 UPDATED: Using the new helper function
             const { stage, progress, daysLeft, marketReadyDate } = getGrowthStage(batch.hatchDate);
             
             return (
@@ -104,9 +103,9 @@ export default function MyListingsPage() {
                 <div className="mt-4 pt-4 border-t border-slate-50 flex justify-end">
                    <button 
                      onClick={() => setSelectedBatch(batch)}
-                     className="text-sm font-bold text-huku-orange hover:bg-orange-50 px-4 py-2 rounded-lg transition"
+                     className="text-sm font-bold text-huku-orange hover:bg-orange-50 px-4 py-2 rounded-lg transition flex items-center gap-2"
                    >
-                     Record Sale
+                     Record Sale (birds sold) <TrendingUp size={16} />
                    </button>
                 </div>
               </div>

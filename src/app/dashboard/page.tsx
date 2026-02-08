@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeToBatches, Batch, deleteBatch } from "@/lib/db-service"; // 👈 Imported deleteBatch
+import { subscribeToBatches, Batch, deleteBatch } from "@/lib/db-service";
 import { getGrowthStage } from "@/lib/chickenLogic";
-import { Loader2, PlusCircle, TrendingUp, Trash2 } from "lucide-react"; // 👈 Imported Trash2
+import { Loader2, PlusCircle, TrendingUp, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { RecordSaleModal } from "@/components/RecordSaleModal";
 
@@ -124,7 +124,7 @@ export default function Dashboard() {
                   onClick={() => setSelectedBatch(batch)}
                   className="w-full bg-white border-2 border-huku-tan text-slate-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-huku-orange hover:text-huku-orange transition"
                 >
-                  Record Sale <TrendingUp size={18} />
+                  Record Sale (birds sold) <TrendingUp size={18} />
                 </button>
 
               </div>
