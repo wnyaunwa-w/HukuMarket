@@ -75,6 +75,17 @@ export async function getAllBatches() {
   }
 }
 
+// 🗑️ DELETE BATCH (Farmer Dashboard)
+export async function deleteBatch(batchId: string) {
+  try {
+    await deleteDoc(doc(db, "batches", batchId));
+    return true;
+  } catch (error) {
+    console.error("Error deleting batch:", error);
+    throw error;
+  }
+}
+
 // --- PROFILE LOGIC ---
 
 // 4. Get User Profile
@@ -271,7 +282,7 @@ export async function activateUserSubscription(userId: string) {
     await updateDoc(userRef, { 
       subscriptionStatus: 'active',
       subscriptionStartDate: startDate.toISOString(),
-      subscriptionExpiryDate: expiryDate.toISOString() // 👈 New Field
+      subscriptionExpiryDate: expiryDate.toISOString() 
     });
     return true;
   } catch (error) {
@@ -311,27 +322,15 @@ export async function deleteUser(userId: string) {
   try {
     // 1. Delete User Profile
     await deleteDoc(doc(db, "users", userId));
-    
-    // Note: In a real production app, you would also use a Cloud Function 
-    // to delete them from Firebase Auth, but this effectively hides them from the app.
     return true;
   } catch (error) {
     console.error("Error deleting user:", error);
     throw error;
   }
-}// ... existing code ...
+}
 
-// 🗑️ DELETE BATCH (Farmer Dashboard)
-export async function deleteBatch(batchId: string) {
-  try {
-    await deleteDoc(doc(db, "batches", batchId));
-    return true;
-  } catch (error) {
-    console.error("Error deleting batch:", error);
-    throw error;
-  }
-}// ... existing imports
-// Add 'Ad' to your interfaces or just define it here
+// 📢 ADVERTISING SYSTEM
+
 export interface Ad {
   id: string;
   title: string;
@@ -343,11 +342,7 @@ export interface Ad {
   active: boolean;
 }
 
-// ... existing code ...
-
-// 📢 ADVERTISING FUNCTIONS
-
-// 1. Fetch all active ads
+// 1. Fetch all ACTIVE ads (For Users)
 export async function getActiveAds(type: 'dashboard_banner' | 'feed_card'): Promise<Ad[]> {
   const q = query(
     collection(db, "ads"), 
@@ -359,7 +354,25 @@ export async function getActiveAds(type: 'dashboard_banner' | 'feed_card'): Prom
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ad));
 }
 
-// 2. (For your Admin Panel later) Create an Ad
+// 2. Create an Ad (For Admin)
 export async function createAd(adData: Omit<Ad, "id">) {
   return await addDoc(collection(db, "ads"), adData);
+}
+
+// 3. Fetch ALL ads (Active & Inactive - For Admin Panel)
+export async function getAllAds() {
+  const q = query(collection(db, "ads"));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ad));
+}
+
+// 4. Toggle Ad Status (Active/Inactive)
+export async function toggleAdStatus(adId: string, currentStatus: boolean) {
+  const ref = doc(db, "ads", adId);
+  await updateDoc(ref, { active: !currentStatus });
+}
+
+// 5. Delete Ad
+export async function deleteAd(adId: string) {
+  await deleteDoc(doc(db, "ads", adId));
 }
