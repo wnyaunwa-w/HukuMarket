@@ -336,10 +336,32 @@ export interface Ad {
   title: string;
   description: string;
   imageUrl: string;
+  logoUrl: string; // 👈 NEW FIELD
   link: string;
   ctaText: string;
   type: 'dashboard_banner' | 'feed_card';
   active: boolean;
+}
+
+// ✅ NEW: Generic Function to Upload Ad Assets (Banner or Logo)
+export async function uploadAdAsset(file: File, path: 'banners' | 'logos') {
+  try {
+    // 1. Create a unique filename to prevent overwrites (timestamp + random string)
+    const fileExtension = file.name.split('.').pop();
+    const uniqueFileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExtension}`;
+    
+    // 2. Create reference (e.g., ads/banners/12345.jpg)
+    const storageRef = ref(storage, `ads/${path}/${uniqueFileName}`);
+    
+    // 3. Upload
+    await uploadBytes(storageRef, file);
+    
+    // 4. Get and return the usable URL
+    return await getDownloadURL(storageRef);
+  } catch (error) {
+    console.error(`Error uploading ${path}:`, error);
+    throw error;
+  }
 }
 
 // 1. Fetch all ACTIVE ads (For Users)
