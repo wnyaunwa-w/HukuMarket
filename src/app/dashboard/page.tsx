@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad } from "@/lib/db-service";
+import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad, getUserProfile } from "@/lib/db-service"; // 👈 Import getUserProfile
 import { getGrowthStage } from "@/lib/chickenLogic";
-import { Loader2, PlusCircle, TrendingUp, Trash2 } from "lucide-react";
+import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert } from "lucide-react"; // 👈 New Icons
 import Link from "next/link";
 import { RecordSaleModal } from "@/components/RecordSaleModal";
-import Image from "next/image"; // 👈 Import Image for optimization
+import Image from "next/image";
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -15,15 +15,25 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   
+  // 👤 USER PROFILE STATE (For Verification Badge)
+  const [userProfile, setUserProfile] = useState<any>(null);
+  
   // 📢 AD STATE
   const [currentAd, setCurrentAd] = useState<Ad | null>(null);
 
   useEffect(() => {
     if (currentUser) {
+      // 1. Subscribe to Batches
       const unsubscribe = subscribeToBatches(currentUser.uid, (data) => {
         setBatches(data);
         setLoading(false);
       });
+
+      // 2. Fetch User Profile (To check isVerified)
+      getUserProfile(currentUser.uid).then((profile) => {
+        setUserProfile(profile);
+      });
+
       return () => unsubscribe();
     }
   }, [currentUser]);
@@ -44,7 +54,6 @@ export default function Dashboard() {
     loadAds();
   }, []);
 
-  // 🗑️ HANDLE DELETE LOGIC
   const handleDelete = async (batchId: string) => {
     const confirmDelete = window.confirm("Are you sure you want to delete this listing? This action cannot be undone.");
     if (confirmDelete) {
@@ -52,7 +61,6 @@ export default function Dashboard() {
     }
   };
 
-  // Calculate Totals
   const totalBirds = batches.reduce((acc, b) => acc + b.count, 0);
   const activeBatches = batches.length;
 
@@ -64,9 +72,28 @@ export default function Dashboard() {
       {/* HEADER */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-black text-slate-900">Dashboard</h1>
+          <h1 className="text-3xl font-black text-slate-900 flex items-center gap-2">
+            Dashboard
+            {/* 🛡️ VERIFICATION BADGE LOGIC */}
+            {userProfile?.isVerified ? (
+              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider border border-blue-200">
+                <BadgeCheck size={14} className="fill-blue-500 text-white" /> Verified Farmer
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider border border-slate-200" title="Contact support to verify your account">
+                Unverified
+              </span>
+            )}
+          </h1>
           <p className="text-slate-500">Welcome, {currentUser?.displayName}</p>
         </div>
+        
+        {/* Upsell for Verification (If not verified) */}
+        {!userProfile?.isVerified && (
+           <button className="hidden md:flex text-xs font-bold text-slate-400 items-center gap-1 hover:text-huku-orange transition">
+             <ShieldAlert size={14} /> How to get verified?
+           </button>
+        )}
       </div>
 
       {/* STATS CARDS */}
@@ -84,29 +111,23 @@ export default function Dashboard() {
       {/* 📢 DYNAMIC SPONSORED BANNER */}
       {currentAd && (
         <div className="mb-8 rounded-3xl overflow-hidden relative group shadow-lg h-64 md:h-72">
-          
-          {/* Background Image - Now clear and visible */}
           <div className="absolute inset-0">
              <img 
                src={currentAd.imageUrl} 
                className="w-full h-full object-cover" 
                alt={currentAd.title} 
              />
-             {/* Gradient Overlay: Dark at bottom for text readability, clear at top */}
              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
           </div>
           
           <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-end">
             <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
-              
               <div className="flex items-start gap-4">
-                {/* Logo Display */}
                 {currentAd.logoUrl && (
                   <div className="w-16 h-16 rounded-full border-2 border-white/20 bg-white p-1 shadow-lg shrink-0 overflow-hidden">
                     <img src={currentAd.logoUrl} alt="Logo" className="w-full h-full object-contain" />
                   </div>
                 )}
-                
                 <div>
                   <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-sm">
                     Partner Offer
@@ -149,8 +170,6 @@ export default function Dashboard() {
             
             return (
               <div key={batch.id} className="bg-huku-light border-2 border-huku-tan rounded-3xl p-6 relative group transition hover:shadow-lg">
-                
-                {/* 🗑️ DELETE BUTTON (Top Right) */}
                 <button 
                   onClick={() => batch.id && handleDelete(batch.id)}
                   className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
@@ -159,7 +178,6 @@ export default function Dashboard() {
                   <Trash2 size={20} />
                 </button>
 
-                {/* HEADER INFO */}
                 <div className="flex justify-between items-start mb-6 pr-10">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -175,7 +193,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* PROGRESS BAR */}
                 <div className="mb-6">
                    <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
                      <span>Day {Math.floor(progress * 0.42)}</span>
@@ -191,7 +208,6 @@ export default function Dashboard() {
                    </div>
                 </div>
 
-                {/* ACTION BUTTON */}
                 <button 
                   onClick={() => setSelectedBatch(batch)}
                   className="w-full bg-white border-2 border-huku-tan text-slate-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-huku-orange hover:text-huku-orange transition"
@@ -205,7 +221,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Sale Modal */}
       {selectedBatch && (
         <RecordSaleModal 
           batch={selectedBatch} 

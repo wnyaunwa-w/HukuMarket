@@ -317,6 +317,21 @@ export async function toggleUserBlock(userId: string, isBlocked: boolean) {
   }
 }
 
+// 🛡️ VERIFICATION SYSTEM (Admin Only)
+// Verify or Unverify a Farmer
+export async function toggleUserVerification(userId: string, isVerified: boolean) {
+  try {
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, { 
+      isVerified: isVerified 
+    });
+    return true;
+  } catch (error) {
+    console.error("Error toggling verification:", error);
+    throw error;
+  }
+}
+
 // 🗑️ DELETE USER
 export async function deleteUser(userId: string) {
   try {
@@ -341,8 +356,8 @@ export interface Ad {
   ctaText: string;
   type: 'dashboard_banner' | 'feed_card';
   active: boolean;
-  startDate?: string; // 👈 New Field
-  endDate?: string;   // 👈 New Field
+  startDate?: string;
+  endDate?: string;
 }
 
 // ✅ Generic Function to Upload Ad Assets (Banner or Logo)
