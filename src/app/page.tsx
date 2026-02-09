@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { getAllBatches, Batch } from "@/lib/db-service";
 import { ListingCard } from "@/components/ListingCard";
 import { ContactModal } from "@/components/ContactModal";
+import { SponsoredAdCard } from "@/components/SponsoredAdCard"; // 👈 Imported Ad Component
 import { Loader2, Search, MapPin, HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
@@ -125,13 +126,46 @@ function MarketContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredBatches.map((batch) => (
-              <ListingCard 
-                key={batch.id} 
-                batch={batch} 
-                onContact={(b) => setSelectedBatch(b)} 
-              />
-            ))}
+            {filteredBatches.map((batch, index) => {
+              // 📢 INJECT AD 1: Feed Company (After 6th listing)
+              if (index === 5) {
+                return (
+                  <>
+                    <SponsoredAdCard 
+                      title="SuperGrow Broiler Feed"
+                      description="Get the best weight gain in 6 weeks! Order bulk starter & finisher pellets today."
+                      image="https://images.unsplash.com/photo-1605000797499-95a059e69528?q=80&w=800&auto=format&fit=crop"
+                      link="https://www.agrifoods.co.zw" 
+                    />
+                    <ListingCard key={batch.id} batch={batch} onContact={(b) => setSelectedBatch(b)} />
+                  </>
+                );
+              }
+              
+              // 📢 INJECT AD 2: Hatchery (After 11th listing)
+              if (index === 10) {
+                return (
+                  <>
+                     <SponsoredAdCard 
+                      title="Premium Cobb 500 Chicks"
+                      description="Disease-free day-old chicks available every Tuesday. Book your batch now!"
+                      image="https://images.unsplash.com/photo-1543438407-16062e70a1a5?q=80&w=800&auto=format&fit=crop"
+                      link="https://www.irvines.co.zw" 
+                      ctaText="Book Chicks"
+                    />
+                    <ListingCard key={batch.id} batch={batch} onContact={(b) => setSelectedBatch(b)} />
+                  </>
+                )
+              }
+
+              return (
+                <ListingCard 
+                  key={batch.id} 
+                  batch={batch} 
+                  onContact={(b) => setSelectedBatch(b)} 
+                />
+              );
+            })}
           </div>
         )}
         
@@ -146,7 +180,7 @@ function MarketContent() {
         )}
       </div>
 
-      {/* ❓ FAQ SECTION (New) */}
+      {/* ❓ FAQ SECTION */}
       <div className="bg-white border-t border-slate-100 py-24">
         <div className="max-w-3xl mx-auto px-6">
           <div className="text-center mb-12">
