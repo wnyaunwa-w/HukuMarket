@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth"; // <--- Added GoogleAuthProvider
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -13,10 +13,12 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
+// Singleton pattern: Check if app is already initialized to avoid "App already exists" errors in dev
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
-const googleProvider = new GoogleAuthProvider(); // <--- Re-added this line
+const storage = getStorage(app); // 👈 Critical for image uploads
+const googleProvider = new GoogleAuthProvider();
 
-export { auth, db, storage, googleProvider }; // <--- Re-exported it here
+export { auth, db, storage, googleProvider };
