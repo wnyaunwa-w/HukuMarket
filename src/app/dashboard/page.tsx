@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad, getUserProfile } from "@/lib/db-service"; // 👈 Import getUserProfile
+import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad, getUserProfile } from "@/lib/db-service"; 
 import { getGrowthStage } from "@/lib/chickenLogic";
-import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert } from "lucide-react"; // 👈 New Icons
+import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert } from "lucide-react"; 
 import Link from "next/link";
 import { RecordSaleModal } from "@/components/RecordSaleModal";
 import Image from "next/image";
@@ -15,7 +15,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   
-  // 👤 USER PROFILE STATE (For Verification Badge)
+  // 👤 USER PROFILE STATE
   const [userProfile, setUserProfile] = useState<any>(null);
   
   // 📢 AD STATE
@@ -23,13 +23,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (currentUser) {
-      // 1. Subscribe to Batches
       const unsubscribe = subscribeToBatches(currentUser.uid, (data) => {
         setBatches(data);
         setLoading(false);
       });
 
-      // 2. Fetch User Profile (To check isVerified)
       getUserProfile(currentUser.uid).then((profile) => {
         setUserProfile(profile);
       });
@@ -38,7 +36,6 @@ export default function Dashboard() {
     }
   }, [currentUser]);
 
-  // 📢 FETCH & ROTATE ADS
   useEffect(() => {
     async function loadAds() {
       try {
@@ -74,13 +71,13 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-black text-slate-900 flex items-center gap-2">
             Dashboard
-            {/* 🛡️ VERIFICATION BADGE LOGIC */}
+            {/* Header Badge */}
             {userProfile?.isVerified ? (
               <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider border border-blue-200">
                 <BadgeCheck size={14} className="fill-blue-500 text-white" /> Verified Farmer
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider border border-slate-200" title="Contact support to verify your account">
+              <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider border border-slate-200">
                 Unverified
               </span>
             )}
@@ -88,7 +85,6 @@ export default function Dashboard() {
           <p className="text-slate-500">Welcome, {currentUser?.displayName}</p>
         </div>
         
-        {/* Upsell for Verification (If not verified) */}
         {!userProfile?.isVerified && (
            <button className="hidden md:flex text-xs font-bold text-slate-400 items-center gap-1 hover:text-huku-orange transition">
              <ShieldAlert size={14} /> How to get verified?
@@ -96,7 +92,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* STATS CARDS */}
+      {/* STATS */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="bg-orange-50 p-6 rounded-3xl border border-huku-orange/20">
           <p className="text-xs font-bold text-huku-orange uppercase tracking-wider mb-1">Total Birds</p>
@@ -108,18 +104,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 📢 DYNAMIC SPONSORED BANNER */}
+      {/* ADS */}
       {currentAd && (
         <div className="mb-8 rounded-3xl overflow-hidden relative group shadow-lg h-64 md:h-72">
           <div className="absolute inset-0">
-             <img 
-               src={currentAd.imageUrl} 
-               className="w-full h-full object-cover" 
-               alt={currentAd.title} 
-             />
+             <img src={currentAd.imageUrl} className="w-full h-full object-cover" alt={currentAd.title} />
              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
           </div>
-          
           <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-end">
             <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
               <div className="flex items-start gap-4">
@@ -129,26 +120,12 @@ export default function Dashboard() {
                   </div>
                 )}
                 <div>
-                  <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-sm">
-                    Partner Offer
-                  </span>
-                  <h3 className="text-2xl md:text-3xl font-black text-white mb-2 leading-tight drop-shadow-md">
-                    {currentAd.title}
-                  </h3>
-                  <p className="text-blue-100 font-medium max-w-lg text-sm md:text-base leading-relaxed drop-shadow-sm line-clamp-2">
-                    {currentAd.description}
-                  </p>
+                  <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-sm">Partner Offer</span>
+                  <h3 className="text-2xl md:text-3xl font-black text-white mb-2 leading-tight drop-shadow-md">{currentAd.title}</h3>
+                  <p className="text-blue-100 font-medium max-w-lg text-sm md:text-base leading-relaxed drop-shadow-sm line-clamp-2">{currentAd.description}</p>
                 </div>
               </div>
-
-              <a 
-                href={currentAd.link} 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg whitespace-nowrap text-sm flex-shrink-0"
-              >
-                {currentAd.ctaText}
-              </a>
+              <a href={currentAd.link} target="_blank" rel="noopener noreferrer" className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg whitespace-nowrap text-sm flex-shrink-0">{currentAd.ctaText}</a>
             </div>
           </div>
         </div>
@@ -182,7 +159,13 @@ export default function Dashboard() {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="text-xl font-black text-slate-900">{batch.breed}</h3>
-                      <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                      
+                      {/* 🛡️ VERIFIED BADGE ON CARD */}
+                      {userProfile?.isVerified && (
+                        <BadgeCheck size={18} className="text-blue-500 fill-blue-100" />
+                      )}
+
+                      <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1">
                         {stage}
                       </span>
                     </div>
