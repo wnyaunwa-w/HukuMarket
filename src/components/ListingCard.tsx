@@ -11,6 +11,7 @@ import {
   getUserProfile, 
   getFarmerReviews 
 } from "@/lib/db-service";
+import { FarmerBadge } from "@/components/FarmerBadge"; // 👈 1. Import Badge
 
 interface ListingCardProps {
   batch: Batch;
@@ -68,7 +69,6 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
   };
 
   return (
-    // 👇 ADDED id={batch.id} HERE
     <div 
       id={batch.id} 
       className={`relative bg-huku-light border-2 border-huku-tan rounded-3xl p-5 transition-all group overflow-hidden ${isSoldOut ? "hover:scale-100 cursor-not-allowed" : "hover:shadow-xl hover:scale-[1.01]"}`}
@@ -97,7 +97,7 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
 
       {/* 👤 FARMER PROFILE HEADER */}
       <div className="flex items-center gap-3 mb-6 pr-10">
-        <div className="h-12 w-12 rounded-full bg-slate-100 border-2 border-white shadow-sm overflow-hidden relative">
+        <div className="h-12 w-12 rounded-full bg-slate-100 border-2 border-white shadow-sm overflow-hidden relative shrink-0">
           {farmerPhoto ? (
             <img src={farmerPhoto} alt={farmerName} className="object-cover w-full h-full" />
           ) : (
@@ -108,7 +108,12 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         </div>
         
         <div>
-          <h4 className="font-bold text-slate-900 text-[15px] leading-tight">{farmerName}</h4>
+          {/* 👇 2. UPDATED: Flex container to hold Name + Badge */}
+          <h4 className="font-bold text-slate-900 text-[15px] leading-tight flex items-center gap-1">
+            {farmerName} 
+            <FarmerBadge userId={batch.userId} />
+          </h4>
+          
           <div className="flex items-center gap-1 text-sm mt-0.5">
             <Star size={14} className="text-yellow-400 fill-yellow-400" />
             <span className="font-bold text-slate-700">{rating ? rating.toFixed(1) : "New"}</span>
