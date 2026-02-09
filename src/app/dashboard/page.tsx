@@ -7,6 +7,7 @@ import { getGrowthStage } from "@/lib/chickenLogic";
 import { Loader2, PlusCircle, TrendingUp, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { RecordSaleModal } from "@/components/RecordSaleModal";
+import Image from "next/image"; // 👈 Import Image for optimization
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -27,19 +28,16 @@ export default function Dashboard() {
     }
   }, [currentUser]);
 
-  // 📢 FETCH & ROTATE ADS (CLEAN VERSION)
+  // 📢 FETCH & ROTATE ADS
   useEffect(() => {
     async function loadAds() {
       try {
         const ads = await getActiveAds("dashboard_banner");
         if (ads.length > 0) {
-          // If we have more than one ad, try to pick a different one than the last one (optional)
-          // For now, simple random selection is sufficient
           const randomIndex = Math.floor(Math.random() * ads.length);
           setCurrentAd(ads[randomIndex]);
         }
       } catch (error) {
-        // Fail silently in production so UI isn't affected
         console.error("Ad service unavailable");
       }
     }
@@ -85,34 +83,52 @@ export default function Dashboard() {
 
       {/* 📢 DYNAMIC SPONSORED BANNER */}
       {currentAd && (
-        <div className="mb-8 rounded-3xl overflow-hidden relative group shadow-sm hover:shadow-md transition">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-900 to-slate-900 opacity-90 z-10" />
-          <img 
-            src={currentAd.imageUrl} 
-            className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-50" 
-            alt={currentAd.title} 
-          />
+        <div className="mb-8 rounded-3xl overflow-hidden relative group shadow-lg h-64 md:h-72">
           
-          <div className="relative z-20 p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-sm">
-                Partner Offer
-              </span>
-              <h3 className="text-2xl md:text-3xl font-black text-white mb-2 leading-tight">
-                {currentAd.title}
-              </h3>
-              <p className="text-blue-100 font-medium max-w-lg text-sm md:text-base leading-relaxed">
-                {currentAd.description}
-              </p>
+          {/* Background Image - Now clear and visible */}
+          <div className="absolute inset-0">
+             <img 
+               src={currentAd.imageUrl} 
+               className="w-full h-full object-cover" 
+               alt={currentAd.title} 
+             />
+             {/* Gradient Overlay: Dark at bottom for text readability, clear at top */}
+             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+          </div>
+          
+          <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-end">
+            <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
+              
+              <div className="flex items-start gap-4">
+                {/* Logo Display */}
+                {currentAd.logoUrl && (
+                  <div className="w-16 h-16 rounded-full border-2 border-white/20 bg-white p-1 shadow-lg shrink-0 overflow-hidden">
+                    <img src={currentAd.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                  </div>
+                )}
+                
+                <div>
+                  <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-sm">
+                    Partner Offer
+                  </span>
+                  <h3 className="text-2xl md:text-3xl font-black text-white mb-2 leading-tight drop-shadow-md">
+                    {currentAd.title}
+                  </h3>
+                  <p className="text-blue-100 font-medium max-w-lg text-sm md:text-base leading-relaxed drop-shadow-sm line-clamp-2">
+                    {currentAd.description}
+                  </p>
+                </div>
+              </div>
+
+              <a 
+                href={currentAd.link} 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg whitespace-nowrap text-sm flex-shrink-0"
+              >
+                {currentAd.ctaText}
+              </a>
             </div>
-            <a 
-              href={currentAd.link} 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg whitespace-nowrap text-sm"
-            >
-              {currentAd.ctaText}
-            </a>
           </div>
         </div>
       )}
