@@ -4,20 +4,33 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { Eye, EyeOff, Loader2 } from "lucide-react"; // 👈 Icons for password toggle
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"; // 👈 Added signInWithPopup
+import { auth, googleProvider } from "@/lib/firebase"; // 👈 Added googleProvider
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginWithGoogle, resetPassword } = useAuth(); // 👈 Get reset function
+  const { resetPassword } = useAuth(); 
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // 👈 State for visibility
-  const [resetSent, setResetSent] = useState(false); // 👈 State for reset feedback
+  const [showPassword, setShowPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  // 🟢 DIRECT GOOGLE LOGIN HANDLER
+  const handleGoogleLogin = async () => {
+    setError("");
+    try {
+      // Use the provider we explicitly exported in firebase.ts
+      await signInWithPopup(auth, googleProvider);
+      router.push("/dashboard");
+    } catch (err: any) {
+      console.error("Google Login Error:", err);
+      setError("Google Login failed. Please try again.");
+    }
+  };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +77,8 @@ export default function LoginPage() {
 
         {/* Google Login Button */}
         <button
-          onClick={loginWithGoogle}
+          onClick={handleGoogleLogin} // 👈 Updated handler
+          type="button" // 👈 Prevent form submission
           className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 p-3 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition mb-6"
         >
           <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-6 w-6" alt="Google" />
@@ -106,7 +120,6 @@ export default function LoginPage() {
             <label className="block text-sm font-bold text-slate-700 mb-1">Password</label>
             <div className="relative">
               <input
-                // 👁️ Toggle type based on state
                 type={showPassword ? "text" : "password"} 
                 required
                 className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-huku-orange outline-none transition pr-10"
@@ -114,7 +127,6 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
               />
-              {/* 👁️ Eye Icon Button */}
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
@@ -124,7 +136,6 @@ export default function LoginPage() {
               </button>
             </div>
             
-            {/* 🔑 Forgot Password Link */}
             <div className="flex justify-end mt-2">
               <button 
                 type="button"
