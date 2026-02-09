@@ -336,27 +336,22 @@ export interface Ad {
   title: string;
   description: string;
   imageUrl: string;
-  logoUrl: string; // 👈 NEW FIELD
+  logoUrl: string;
   link: string;
   ctaText: string;
   type: 'dashboard_banner' | 'feed_card';
   active: boolean;
+  startDate?: string; // 👈 New Field
+  endDate?: string;   // 👈 New Field
 }
 
-// ✅ NEW: Generic Function to Upload Ad Assets (Banner or Logo)
+// ✅ Generic Function to Upload Ad Assets (Banner or Logo)
 export async function uploadAdAsset(file: File, path: 'banners' | 'logos') {
   try {
-    // 1. Create a unique filename to prevent overwrites (timestamp + random string)
     const fileExtension = file.name.split('.').pop();
     const uniqueFileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExtension}`;
-    
-    // 2. Create reference (e.g., ads/banners/12345.jpg)
     const storageRef = ref(storage, `ads/${path}/${uniqueFileName}`);
-    
-    // 3. Upload
     await uploadBytes(storageRef, file);
-    
-    // 4. Get and return the usable URL
     return await getDownloadURL(storageRef);
   } catch (error) {
     console.error(`Error uploading ${path}:`, error);
@@ -364,7 +359,7 @@ export async function uploadAdAsset(file: File, path: 'banners' | 'logos') {
   }
 }
 
-// 1. Fetch all ACTIVE ads (For Users)
+// 1. Fetch all ACTIVE ads (Smart Filter: Hides Expired Ads)
 export async function getActiveAds(type: 'dashboard_banner' | 'feed_card'): Promise<Ad[]> {
   const q = query(
     collection(db, "ads"), 
@@ -373,7 +368,17 @@ export async function getActiveAds(type: 'dashboard_banner' | 'feed_card'): Prom
   );
   
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ad));
+  const now = new Date();
+
+  return snapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() } as Ad))
+    .filter(ad => {
+      // If dates are set, strictly enforce them
+      if (ad.startDate && new Date(ad.startDate) > now) return false; // Scheduled for future
+      if (ad.endDate && new Date(ad.endDate) < now) return false;     // Expired
+      
+      return true; // Valid
+    });
 }
 
 // 2. Create an Ad (For Admin)
@@ -388,7 +393,7 @@ export async function getAllAds() {
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ad));
 }
 
-// 4. Toggle Ad Status (Active/Inactive)
+// 4. Toggle Ad Status
 export async function toggleAdStatus(adId: string, currentStatus: boolean) {
   const ref = doc(db, "ads", adId);
   await updateDoc(ref, { active: !currentStatus });

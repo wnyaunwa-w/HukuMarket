@@ -2,20 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { getAllAds, createAd, deleteAd, toggleAdStatus, Ad, uploadAdAsset } from "@/lib/db-service";
-import { Trash2, Plus, Power, ExternalLink, Image as ImageIcon, Loader2, ArrowLeft, Upload, X, MessageCircle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { Trash2, Plus, Power, ExternalLink, Image as ImageIcon, Loader2, ArrowLeft, Upload, X, MessageCircle, Calendar } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
 export default function AdManager() {
+  const { currentUser } = useAuth();
+  const router = useRouter();
+  
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   
-  // 🆕 Upload States
+  // Upload States
   const [uploading, setUploading] = useState(false);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  // Previews
   const [bannerPreview, setBannerPreview] = useState<string>("");
   const [logoPreview, setLogoPreview] = useState<string>("");
 
@@ -23,19 +27,26 @@ export default function AdManager() {
   const [newAd, setNewAd] = useState({
     title: "",
     description: "",
-    imageUrl: "", // Will be set after upload
-    logoUrl: "",  // Will be set after upload
+    imageUrl: "", 
+    logoUrl: "",  
     link: "",
     ctaText: "Chat on WhatsApp",
     type: "dashboard_banner" as const,
-    active: true
+    active: true,
+    startDate: "", // 👈 New Date Fields
+    endDate: ""
   });
+
+  useEffect(() => {
+    if (!loading && !currentUser) {
+        router.push("/login"); 
+    }
+  }, [currentUser, loading, router]);
 
   useEffect(() => {
     loadAds();
   }, []);
 
-  // Clean up object URLs to avoid memory leaks
   useEffect(() => {
     return () => {
       if (bannerPreview) URL.revokeObjectURL(bannerPreview);
@@ -62,7 +73,11 @@ export default function AdManager() {
 
   const resetForm = () => {
     setIsCreating(false);
-    setNewAd({ title: "", description: "", imageUrl: "", logoUrl: "", link: "", ctaText: "Chat on WhatsApp", type: "dashboard_banner", active: true });
+    setNewAd({ 
+        title: "", description: "", imageUrl: "", logoUrl: "", link: "", 
+        ctaText: "Chat on WhatsApp", type: "dashboard_banner", active: true,
+        startDate: "", endDate: "" 
+    });
     setBannerFile(null);
     setLogoFile(null);
     setBannerPreview("");
@@ -72,21 +87,17 @@ export default function AdManager() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 1. Basic Validation
     if (!newAd.title || !newAd.description || !bannerFile || !logoFile) {
       alert("Please fill in required text fields and upload both banner and logo images.");
       return;
     }
 
-    // 2. WhatsApp Validation
-    // Remove whitespace and ensure it starts with the correct prefix
     let cleanLink = newAd.link.trim();
     if (!cleanLink.startsWith("https://wa.me/")) {
-        //If they just typed a number (e.g. 26377...), help them out
         if(cleanLink.startsWith("263") || cleanLink.startsWith("+263")) {
              cleanLink = `https://wa.me/${cleanLink.replace('+', '')}`;
         } else {
-             alert("The Target Link must be a valid WhatsApp URL starting with 'https://wa.me/' followed by the country code and phone number.");
+             alert("The Target Link must be a valid WhatsApp URL starting with 'https://wa.me/'.");
              return;
         }
     }
@@ -94,25 +105,26 @@ export default function AdManager() {
     try {
       setUploading(true);
 
-      // 3. Upload Images concurrently
       const [bannerUrl, logoUrl] = await Promise.all([
         uploadAdAsset(bannerFile, 'banners'),
         uploadAdAsset(logoFile, 'logos')
       ]);
       
-      // 4. Create Ad in DB with resultant URLs
       await createAd({
         ...newAd,
         imageUrl: bannerUrl,
         logoUrl: logoUrl,
-        link: cleanLink
+        link: cleanLink,
+        // Save dates if provided, otherwise leave undefined (runs forever)
+        startDate: newAd.startDate || undefined,
+        endDate: newAd.endDate || undefined
       });
 
       resetForm();
-      loadAds(); // Refresh list
+      loadAds(); 
     } catch (error) {
         console.error(error);
-        alert("Failed to upload images or create ad. See console.");
+        alert("Failed to upload images or create ad.");
     } finally {
       setUploading(false);
     }
@@ -130,7 +142,19 @@ export default function AdManager() {
     loadAds();
   };
 
+  // Helper to check expiry status
+  const getAdStatus = (ad: Ad) => {
+    if (!ad.active) return { label: "Paused", color: "bg-slate-200 text-slate-500" };
+    
+    const now = new Date();
+    if (ad.endDate && new Date(ad.endDate) < now) return { label: "Expired", color: "bg-red-100 text-red-600" };
+    if (ad.startDate && new Date(ad.startDate) > now) return { label: "Scheduled", color: "bg-blue-100 text-blue-600" };
+    
+    return { label: "Active", color: "bg-green-500 text-white" };
+  };
+
   if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-huku-orange" /></div>;
+  if (!currentUser) return null; 
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-10">
@@ -157,7 +181,7 @@ export default function AdManager() {
           )}
         </div>
 
-        {/* 📝 CREATE FORM (Conditional) */}
+        {/* 📝 CREATE FORM */}
         {isCreating && (
           <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 mb-8 animate-in fade-in slide-in-from-top-4 relative">
             {uploading && (
@@ -176,7 +200,7 @@ export default function AdManager() {
             
             <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-8">
               
-              {/* LEFT COLUMN - TEXT INPUTS */}
+              {/* LEFT COLUMN */}
               <div className="space-y-6">
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Headline</label>
@@ -185,18 +209,30 @@ export default function AdManager() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Description</label>
-                  <textarea required rows={4} placeholder="e.g. Buy 20 bags and get free delivery..." className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-huku-orange font-medium text-slate-600 resize-none"
+                  <textarea required rows={3} placeholder="e.g. Buy 20 bags..." className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-huku-orange font-medium text-slate-600 resize-none"
                     value={newAd.description} onChange={e => setNewAd({...newAd, description: e.target.value})} />
                 </div>
 
-                {/* WhatsApp Link Input */}
+                {/* 🗓️ DATE RANGE PICKER */}
+                <div className="flex gap-4 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-blue-800 uppercase mb-2">Start Date</label>
+                        <input type="date" className="w-full p-2 bg-white rounded-lg border border-blue-200 text-sm font-bold text-slate-700"
+                        value={newAd.startDate} onChange={e => setNewAd({...newAd, startDate: e.target.value})} />
+                    </div>
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-blue-800 uppercase mb-2">End Date</label>
+                        <input type="date" className="w-full p-2 bg-white rounded-lg border border-blue-200 text-sm font-bold text-slate-700"
+                        value={newAd.endDate} onChange={e => setNewAd({...newAd, endDate: e.target.value})} />
+                    </div>
+                </div>
+
                  <div>
                     <label className="flex items-center gap-2 text-xs font-bold text-green-600 uppercase mb-2">
                         <MessageCircle size={14} /> WhatsApp Target Link
                     </label>
-                    <input required type="url" placeholder="https://wa.me/263771234567" className="w-full p-3 bg-green-50/50 rounded-xl border border-green-200 outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm text-green-800 placeholder:text-green-300/70"
+                    <input required type="url" placeholder="https://wa.me/263..." className="w-full p-3 bg-green-50/50 rounded-xl border border-green-200 outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm text-green-800"
                     value={newAd.link} onChange={e => setNewAd({...newAd, link: e.target.value})} />
-                    <p className="text-[10px] text-slate-400 mt-2">Must start with <code>https://wa.me/</code> followed by country code (no +) and number.</p>
                 </div>
                  <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Button Text</label>
@@ -205,69 +241,34 @@ export default function AdManager() {
                 </div>
               </div>
 
-              {/* RIGHT COLUMN - IMAGE UPLOADS */}
+              {/* RIGHT COLUMN - IMAGES */}
               <div className="space-y-6">
-                
-                {/* Banner Upload */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Main Banner Image (Landscape)</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Main Banner Image</label>
                   <div className="relative group">
-                    <input 
-                        type="file" 
-                        accept="image/png, image/jpeg, image/webp"
-                        onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], 'banner')}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    />
-                    <div className={`h-48 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center bg-slate-50 overflow-hidden transition-all ${bannerPreview ? 'border-huku-orange' : 'border-slate-300 group-hover:border-huku-orange group-hover:bg-orange-50/50'}`}>
-                        {bannerPreview ? (
-                             <img src={bannerPreview} alt="Banner Preview" className="w-full h-full object-cover" />
-                        ) : (
-                            <>
-                                <Upload className="text-slate-400 mb-2 group-hover:text-huku-orange transition-colors" size={30} />
-                                <p className="text-sm text-slate-500 font-bold group-hover:text-huku-orange transition-colors">Click to upload banner</p>
-                                <p className="text-xs text-slate-400">PNG, JPG, WEBP (Max 2MB)</p>
-                            </>
-                        )}
+                    <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], 'banner')}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                    <div className={`h-40 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center bg-slate-50 overflow-hidden ${bannerPreview ? 'border-huku-orange' : 'border-slate-300'}`}>
+                        {bannerPreview ? <img src={bannerPreview} className="w-full h-full object-cover" /> : <Upload className="text-slate-400" />}
                     </div>
                   </div>
                 </div>
 
-                 {/* Logo Upload */}
                  <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Company Logo (Square/Circle)</label>
-                  <div className="flex items-center gap-4">
-                    <div className="relative group w-24 h-24 shrink-0">
-                        <input 
-                            type="file" 
-                            accept="image/png, image/jpeg, image/webp"
-                            onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], 'logo')}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                        />
-                        <div className={`w-24 h-24 rounded-full border-2 border-dashed flex flex-col items-center justify-center bg-slate-50 overflow-hidden transition-all ${logoPreview ? 'border-huku-orange' : 'border-slate-300 group-hover:border-huku-orange group-hover:bg-orange-50/50'}`}>
-                            {logoPreview ? (
-                                <img src={logoPreview} alt="Logo Preview" className="w-full h-full object-cover" />
-                            ) : (
-                                <Upload className="text-slate-400 group-hover:text-huku-orange transition-colors" size={20} />
-                            )}
-                        </div>
-                    </div>
-                    <div className="text-sm text-slate-500">
-                        <p className="font-bold">Upload Partner Logo</p>
-                        <p className="text-xs text-slate-400">Will be displayed next to the headline.</p>
-                    </div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Company Logo</label>
+                  <div className="relative group w-24 h-24">
+                      <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], 'logo')}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                      <div className={`w-24 h-24 rounded-full border-2 border-dashed flex items-center justify-center bg-slate-50 overflow-hidden ${logoPreview ? 'border-huku-orange' : 'border-slate-300'}`}>
+                          {logoPreview ? <img src={logoPreview} className="w-full h-full object-cover" /> : <Upload className="text-slate-400" size={20} />}
+                      </div>
                   </div>
                 </div>
-
               </div>
 
               <div className="md:col-span-2 border-t border-slate-100 pt-6 mt-2 flex justify-end">
-                 <button 
-                    type="submit" 
-                    disabled={uploading}
-                    className="px-8 py-4 rounded-xl font-black bg-huku-orange text-white hover:bg-orange-600 transition shadow-lg shadow-orange-200/50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {uploading ? <Loader2 className="animate-spin" /> : <Upload size={20} />}
-                    Create & Publish Campaign
+                 <button type="submit" disabled={uploading} className="px-8 py-4 rounded-xl font-black bg-huku-orange text-white hover:bg-orange-600 transition shadow-lg flex items-center gap-2">
+                    {uploading ? <Loader2 className="animate-spin" /> : <Upload size={20} />} Create Campaign
                  </button>
               </div>
             </form>
@@ -276,73 +277,51 @@ export default function AdManager() {
 
         {/* 📊 ADS LIST */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
-          {ads.map((ad) => (
+          {ads.map((ad) => {
+            const status = getAdStatus(ad);
+            return (
             <div key={ad.id} className={`relative bg-white border-2 rounded-3xl overflow-hidden transition group ${!ad.active ? "opacity-60 grayscale border-slate-100" : "border-slate-100 hover:border-blue-100 hover:shadow-xl"}`}>
               
               {/* Status Badge */}
-              <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest z-10 shadow-sm ${ad.active ? "bg-green-500 text-white" : "bg-slate-200 text-slate-500"}`}>
-                {ad.active ? "Active" : "Inactive"}
+              <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest z-10 shadow-sm ${status.color}`}>
+                {status.label}
               </div>
 
               {/* Actions Overlay */}
               <div className="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                 <button 
-                   onClick={() => handleToggle(ad.id, ad.active)}
-                   className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm hover:bg-slate-50 text-slate-600"
-                   title={ad.active ? "Pause Campaign" : "Activate Campaign"}
-                 >
-                   <Power size={16} className={ad.active ? "text-green-600" : "text-slate-400"} />
+                 <button onClick={() => handleToggle(ad.id, ad.active)} className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm hover:bg-slate-50 text-slate-600">
+                   <Power size={16} />
                  </button>
-                 <button 
-                   onClick={() => handleDelete(ad.id)}
-                   className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm hover:bg-red-50 text-red-500"
-                   title="Delete"
-                 >
+                 <button onClick={() => handleDelete(ad.id)} className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm hover:bg-red-50 text-red-500">
                    <Trash2 size={16} />
                  </button>
               </div>
 
-              {/* Image Preview */}
-              <div className="h-48 bg-slate-100 relative">
-                {ad.imageUrl ? (
-                     <Image src={ad.imageUrl} alt={ad.title} fill className="object-cover" />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-300"><ImageIcon /></div>
-                )}
+              {/* Preview */}
+              <div className="h-40 bg-slate-100 relative">
+                {ad.imageUrl && <Image src={ad.imageUrl} alt={ad.title} fill className="object-cover" />}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent" />
-                
-                {/* Logo & Title Overlay */}
-                <div className="absolute bottom-4 left-4 right-4 text-white flex items-center gap-3">
-                    {ad.logoUrl && <img src={ad.logoUrl} className="w-10 h-10 rounded-full border-2 border-white/50 shadow-sm object-cover" />}
-                    <div>
-                         <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1 block">Partner Offer</span>
-                         <h3 className="font-black leading-tight line-clamp-1 text-lg">{ad.title}</h3>
-                    </div>
+                <div className="absolute bottom-3 left-3 right-3 text-white flex items-center gap-2">
+                    {ad.logoUrl && <img src={ad.logoUrl} className="w-8 h-8 rounded-full border border-white/50 bg-white" />}
+                    <h3 className="font-bold text-sm line-clamp-1">{ad.title}</h3>
                 </div>
               </div>
 
-              {/* Content */}
-              <div className="p-5">
-                <p className="text-sm text-slate-500 line-clamp-2 mb-4 h-10 leading-relaxed">{ad.description}</p>
-                
-                <div className="flex items-center justify-between">
-                     <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{ad.ctaText}</span>
-                    <a href={ad.link} target="_blank" className="text-xs font-bold text-green-600 flex items-center gap-1 hover:underline bg-green-50 px-2 py-1 rounded-md">
-                    Test WhatsApp <ExternalLink size={12} />
-                    </a>
-                </div>
-               
+              {/* Info */}
+              <div className="p-4">
+                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
+                    <Calendar size={14} />
+                    {ad.endDate ? `Ends: ${ad.endDate}` : "Run indefinitely"}
+                 </div>
+                 <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-500 uppercase">{ad.ctaText}</span>
+                    <a href={ad.link} target="_blank" className="text-xs font-bold text-green-600 hover:underline">Test Link ↗</a>
+                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
-
-        {ads.length === 0 && !loading && !isCreating && (
-          <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200">
-            <p className="text-slate-400 mb-4 font-bold">No ads found.</p>
-            <button onClick={() => setIsCreating(true)} className="text-huku-orange font-bold hover:underline">Create your first campaign</button>
-          </div>
-        )}
       </div>
     </div>
   );
