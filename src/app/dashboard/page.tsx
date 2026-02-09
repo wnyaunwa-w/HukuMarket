@@ -27,29 +27,20 @@ export default function Dashboard() {
     }
   }, [currentUser]);
 
-  // 📢 FETCH & ROTATE ADS (DEBUG VERSION)
+  // 📢 FETCH & ROTATE ADS (CLEAN VERSION)
   useEffect(() => {
     async function loadAds() {
       try {
-        console.log("🔍 Attempting to fetch ads...");
         const ads = await getActiveAds("dashboard_banner");
-        
-        console.log(`✅ Found ${ads.length} active ads in database.`);
-        
         if (ads.length > 0) {
-          // Log the titles to see which ones are available to prove they exist
-          ads.forEach((ad, index) => console.log(`[${index}] ${ad.title}`));
-
-          // Pick a random one
+          // If we have more than one ad, try to pick a different one than the last one (optional)
+          // For now, simple random selection is sufficient
           const randomIndex = Math.floor(Math.random() * ads.length);
-          console.log(`🎲 Selected Index: ${randomIndex} (${ads[randomIndex].title})`);
-          
           setCurrentAd(ads[randomIndex]);
-        } else {
-          console.warn("⚠️ No ads found! Check your database fields.");
         }
       } catch (error) {
-        console.error("❌ Failed to load ads:", error);
+        // Fail silently in production so UI isn't affected
+        console.error("Ad service unavailable");
       }
     }
     loadAds();
@@ -93,10 +84,8 @@ export default function Dashboard() {
       </div>
 
       {/* 📢 DYNAMIC SPONSORED BANNER */}
-      {/* Only render if we successfully fetched an ad */}
       {currentAd && (
         <div className="mb-8 rounded-3xl overflow-hidden relative group shadow-sm hover:shadow-md transition">
-          {/* Background & Overlay */}
           <div className="absolute inset-0 bg-gradient-to-r from-blue-900 to-slate-900 opacity-90 z-10" />
           <img 
             src={currentAd.imageUrl} 
