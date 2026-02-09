@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad } from "@/lib/db-service"; // 👈 Imported Ad functions
+import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad } from "@/lib/db-service";
 import { getGrowthStage } from "@/lib/chickenLogic";
 import { Loader2, PlusCircle, TrendingUp, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -27,18 +27,29 @@ export default function Dashboard() {
     }
   }, [currentUser]);
 
-  // 📢 FETCH & ROTATE ADS
+  // 📢 FETCH & ROTATE ADS (DEBUG VERSION)
   useEffect(() => {
     async function loadAds() {
       try {
+        console.log("🔍 Attempting to fetch ads...");
         const ads = await getActiveAds("dashboard_banner");
+        
+        console.log(`✅ Found ${ads.length} active ads in database.`);
+        
         if (ads.length > 0) {
-          // 🎲 Pick a random ad from the list
+          // Log the titles to see which ones are available to prove they exist
+          ads.forEach((ad, index) => console.log(`[${index}] ${ad.title}`));
+
+          // Pick a random one
           const randomIndex = Math.floor(Math.random() * ads.length);
+          console.log(`🎲 Selected Index: ${randomIndex} (${ads[randomIndex].title})`);
+          
           setCurrentAd(ads[randomIndex]);
+        } else {
+          console.warn("⚠️ No ads found! Check your database fields.");
         }
       } catch (error) {
-        console.error("Failed to load ads:", error);
+        console.error("❌ Failed to load ads:", error);
       }
     }
     loadAds();
