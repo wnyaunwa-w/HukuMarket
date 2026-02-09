@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeToBatches, Batch, deleteBatch } from "@/lib/db-service";
+import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad } from "@/lib/db-service"; // 👈 Imported Ad functions
 import { getGrowthStage } from "@/lib/chickenLogic";
 import { Loader2, PlusCircle, TrendingUp, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -13,6 +13,9 @@ export default function Dashboard() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+  
+  // 📢 AD STATE
+  const [currentAd, setCurrentAd] = useState<Ad | null>(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -23,6 +26,23 @@ export default function Dashboard() {
       return () => unsubscribe();
     }
   }, [currentUser]);
+
+  // 📢 FETCH & ROTATE ADS
+  useEffect(() => {
+    async function loadAds() {
+      try {
+        const ads = await getActiveAds("dashboard_banner");
+        if (ads.length > 0) {
+          // 🎲 Pick a random ad from the list
+          const randomIndex = Math.floor(Math.random() * ads.length);
+          setCurrentAd(ads[randomIndex]);
+        }
+      } catch (error) {
+        console.error("Failed to load ads:", error);
+      }
+    }
+    loadAds();
+  }, []);
 
   // 🗑️ HANDLE DELETE LOGIC
   const handleDelete = async (batchId: string) => {
@@ -61,38 +81,41 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 📢 SPONSORED BANNER FOR FARMERS */}
-      <div className="mb-8 rounded-3xl overflow-hidden relative group shadow-sm hover:shadow-md transition">
-        {/* Background & Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-900 to-slate-900 opacity-90 z-10" />
-        <img 
-          src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1200" 
-          className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-50" 
-          alt="Feed Ad" 
-        />
-        
-        <div className="relative z-20 p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
-            <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-sm">
-              Partner Offer
-            </span>
-            <h3 className="text-2xl md:text-3xl font-black text-white mb-2 leading-tight">
-              Get 10% Off Grower Pellets
-            </h3>
-            <p className="text-blue-100 font-medium max-w-lg text-sm md:text-base leading-relaxed">
-              Exclusive to HukuMarket farmers. Buy 20 bags or more from National Foods and get free delivery to Ruwa/Goromonzi.
-            </p>
+      {/* 📢 DYNAMIC SPONSORED BANNER */}
+      {/* Only render if we successfully fetched an ad */}
+      {currentAd && (
+        <div className="mb-8 rounded-3xl overflow-hidden relative group shadow-sm hover:shadow-md transition">
+          {/* Background & Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-900 to-slate-900 opacity-90 z-10" />
+          <img 
+            src={currentAd.imageUrl} 
+            className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-50" 
+            alt={currentAd.title} 
+          />
+          
+          <div className="relative z-20 p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-sm">
+                Partner Offer
+              </span>
+              <h3 className="text-2xl md:text-3xl font-black text-white mb-2 leading-tight">
+                {currentAd.title}
+              </h3>
+              <p className="text-blue-100 font-medium max-w-lg text-sm md:text-base leading-relaxed">
+                {currentAd.description}
+              </p>
+            </div>
+            <a 
+              href={currentAd.link} 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg whitespace-nowrap text-sm"
+            >
+              {currentAd.ctaText}
+            </a>
           </div>
-          <a 
-            href="https://wa.me/263770000000" 
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg whitespace-nowrap text-sm"
-          >
-            Claim Offer
-          </a>
         </div>
-      </div>
+      )}
 
       {/* BATCH LIST */}
       <div className="space-y-6">

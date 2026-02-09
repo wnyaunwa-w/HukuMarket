@@ -330,4 +330,36 @@ export async function deleteBatch(batchId: string) {
     console.error("Error deleting batch:", error);
     throw error;
   }
+}// ... existing imports
+// Add 'Ad' to your interfaces or just define it here
+export interface Ad {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  link: string;
+  ctaText: string;
+  type: 'dashboard_banner' | 'feed_card';
+  active: boolean;
+}
+
+// ... existing code ...
+
+// 📢 ADVERTISING FUNCTIONS
+
+// 1. Fetch all active ads
+export async function getActiveAds(type: 'dashboard_banner' | 'feed_card'): Promise<Ad[]> {
+  const q = query(
+    collection(db, "ads"), 
+    where("active", "==", true),
+    where("type", "==", type)
+  );
+  
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ad));
+}
+
+// 2. (For your Admin Panel later) Create an Ad
+export async function createAd(adData: Omit<Ad, "id">) {
+  return await addDoc(collection(db, "ads"), adData);
 }
