@@ -8,6 +8,9 @@ import { Trash2, Plus, Power, ExternalLink, Image as ImageIcon, Loader2, ArrowLe
 import Link from "next/link";
 import Image from "next/image";
 
+// 🔒 ALLOWED ADMINS
+const ADMIN_EMAIL = "wnyaunwa@gmail.com";
+
 export default function AdManager() {
   const { currentUser } = useAuth();
   const router = useRouter();
@@ -33,19 +36,30 @@ export default function AdManager() {
     ctaText: "Chat on WhatsApp",
     type: "dashboard_banner" as const,
     active: true,
-    startDate: "", // 👈 New Date Fields
+    startDate: "",
     endDate: ""
   });
 
+  // 🔒 STRICT SECURITY CHECK
   useEffect(() => {
-    if (!loading && !currentUser) {
+    // 1. If user is logged in...
+    if (currentUser) {
+        // 2. Check if email matches the Admin Email
+        if (currentUser.email !== ADMIN_EMAIL) {
+            alert("⛔️ Access Denied: You do not have permission to view the Ad Manager.");
+            router.push("/dashboard"); // Kick them out
+        }
+    } else if (!loading && !currentUser) {
+        // 3. If not logged in at all, send to login
         router.push("/login"); 
     }
   }, [currentUser, loading, router]);
 
   useEffect(() => {
-    loadAds();
-  }, []);
+    if (currentUser?.email === ADMIN_EMAIL) {
+        loadAds();
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     return () => {
@@ -115,7 +129,6 @@ export default function AdManager() {
         imageUrl: bannerUrl,
         logoUrl: logoUrl,
         link: cleanLink,
-        // Save dates if provided, otherwise leave undefined (runs forever)
         startDate: newAd.startDate || undefined,
         endDate: newAd.endDate || undefined
       });
@@ -142,7 +155,6 @@ export default function AdManager() {
     loadAds();
   };
 
-  // Helper to check expiry status
   const getAdStatus = (ad: Ad) => {
     if (!ad.active) return { label: "Paused", color: "bg-slate-200 text-slate-500" };
     
@@ -154,7 +166,9 @@ export default function AdManager() {
   };
 
   if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-huku-orange" /></div>;
-  if (!currentUser) return null; 
+  
+  // 🔒 Extra safety: Don't render UI if email doesn't match
+  if (currentUser?.email !== ADMIN_EMAIL) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-10">
