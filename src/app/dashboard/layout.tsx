@@ -16,7 +16,9 @@ import {
   ShieldCheck,
   Menu,
   ShoppingBag,
-  Heart // 👈 Imported Heart icon
+  Heart,
+  Megaphone, // 👈 Imported for Ads
+  Users      // 👈 Imported for User Manager
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -34,10 +36,9 @@ import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-// UPDATED: Added 'Saved Farms' to the menu
 const menuItems = [
   { href: '/dashboard', label: 'Overview', icon: Home },
-  { href: '/dashboard/favorites', label: 'Saved Farms', icon: Heart }, // 👈 New Menu Item
+  { href: '/dashboard/favorites', label: 'Saved Farms', icon: Heart },
   { href: '/dashboard/profile', label: 'Profile', icon: UserCircle },
   { href: '/dashboard/listings', label: 'My Listings', icon: LayoutGrid },
   { href: '/dashboard/listings/new', label: 'Create Listing', icon: PlusCircle },
@@ -63,7 +64,7 @@ function SidebarLink({ item, isActive }: { item: any, isActive: boolean }) {
 
   const handleClick = () => {
     if (isMobile) {
-      setOpenMobile(false); // Close sidebar when clicked on mobile
+      setOpenMobile(false);
     }
   };
 
@@ -142,28 +143,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </SidebarMenuItem>
               ))}
 
+              {/* 🔒 SUPER ADMIN SECTION */}
               {currentUser?.email === ADMIN_EMAIL && (
                 <>
-                  <div className="my-2 border-t border-huku-tan/30 mx-2" />
+                  <div className="my-2 border-t-2 border-orange-200 mx-2" />
+                  
+                  {/* Section Label */}
+                  <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest group-data-[collapsible=icon]:hidden">
+                    Super Admin
+                  </div>
+
                   <SidebarMenuItem>
                     <SidebarLink 
-                      item={{ href: '/dashboard/admin', label: 'Super Admin', icon: ShieldCheck }} 
-                      isActive={pathname === '/dashboard/admin'} 
+                      item={{ href: '/admin/ads', label: 'Ads Manager', icon: Megaphone }} 
+                      isActive={pathname === '/admin/ads'} 
+                    />
+                  </SidebarMenuItem>
+
+                  <SidebarMenuItem>
+                    <SidebarLink 
+                      item={{ href: '/admin/users', label: 'User Manager', icon: Users }} 
+                      isActive={pathname === '/admin/users'} 
                     />
                   </SidebarMenuItem>
                 </>
               )}
+
             </SidebarMenu>
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t border-huku-tan">
-            {/* Log Out Button Wrapper */}
             <LogoutButton logoutAction={logout} />
           </SidebarFooter>
         </Sidebar>
 
         <SidebarInset className="bg-slate-50/50 w-full overflow-x-hidden">
-          {/* Mobile Header */}
           <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-white/80 backdrop-blur-md px-4 md:hidden">
             <MobileSidebarTrigger />
             <h1 className="text-lg font-headline font-bold text-slate-800">
@@ -180,7 +194,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 }
 
-// Helper Component to handle Logout + Sidebar Close
 function LogoutButton({ logoutAction }: { logoutAction: () => void }) {
   const { setOpenMobile, isMobile } = useSidebar();
 
