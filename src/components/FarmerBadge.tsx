@@ -21,7 +21,11 @@ export function FarmerBadge({ userId }: { userId: string }) {
 
   return (
     <div title="Verified Farmer" className="inline-flex items-center justify-center ml-1">
-      <BadgeCheck size={16} className="text-blue-500 fill-blue-100" />
+      {/* fill-blue-600: Solid Dark Blue Background
+          text-white: White Checkmark & Outline 
+          size={20}: Increased from 16 to 20
+      */}
+      <BadgeCheck size={20} className="text-white fill-blue-600" />
     </div>
   );
 }
