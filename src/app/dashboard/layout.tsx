@@ -58,8 +58,8 @@ function MobileSidebarTrigger() {
   );
 }
 
-// Wrapper for links to handle mobile closing automatically
-function SidebarLink({ item, isActive }: { item: any, isActive: boolean }) {
+// UPDATED: Now accepts an optional 'className' prop for indentation
+function SidebarLink({ item, isActive, className }: { item: any, isActive: boolean, className?: string }) {
   const { setOpenMobile, isMobile } = useSidebar();
 
   const handleClick = () => {
@@ -73,7 +73,8 @@ function SidebarLink({ item, isActive }: { item: any, isActive: boolean }) {
       asChild
       isActive={isActive}
       tooltip={item.label}
-      className="hover:bg-orange-50 hover:text-orange-600 transition-colors cursor-pointer"
+      // Added ${className} to the end of the class string
+      className={`hover:bg-orange-50 hover:text-orange-600 transition-colors cursor-pointer ${className}`}
     >
       <Link href={item.href} onClick={handleClick}>
         <item.icon />
@@ -146,17 +147,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {/* 🔒 SUPER ADMIN SECTION */}
               {currentUser?.email === ADMIN_EMAIL && (
                 <>
-                  <div className="my-2 border-t-2 border-orange-200 mx-2" />
+                  <div className="my-2 border-t border-huku-tan/30 mx-2" />
                   
-                  {/* Section Label */}
-                  <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest group-data-[collapsible=icon]:hidden">
-                    Super Admin
-                  </div>
+                  {/* 1. Main Super Admin Dashboard (RESTORED) */}
+                  <SidebarMenuItem>
+                    <SidebarLink 
+                      item={{ href: '/dashboard/admin', label: 'Super Admin', icon: ShieldCheck }} 
+                      isActive={pathname === '/dashboard/admin'} 
+                    />
+                  </SidebarMenuItem>
 
+                  {/* 2. Nested Management Links */}
+                  {/* Added 'ml-4' class to SidebarLink via our new prop to indent them */}
+                  
                   <SidebarMenuItem>
                     <SidebarLink 
                       item={{ href: '/admin/ads', label: 'Ads Manager', icon: Megaphone }} 
-                      isActive={pathname === '/admin/ads'} 
+                      isActive={pathname === '/admin/ads'}
+                      className="ml-4 border-l-2 border-slate-200 pl-3 rounded-none h-9 text-slate-500" // 👈 Indentation Styling
                     />
                   </SidebarMenuItem>
 
@@ -164,11 +172,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <SidebarLink 
                       item={{ href: '/admin/users', label: 'User Manager', icon: Users }} 
                       isActive={pathname === '/admin/users'} 
+                      className="ml-4 border-l-2 border-slate-200 pl-3 rounded-none h-9 text-slate-500" // 👈 Indentation Styling
                     />
                   </SidebarMenuItem>
                 </>
               )}
-
             </SidebarMenu>
           </SidebarContent>
 
