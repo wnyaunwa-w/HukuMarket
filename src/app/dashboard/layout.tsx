@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ForceProfileUpdateModal } from '@/components/ForceProfileUpdateModal';
+import { SubscriptionGate } from '@/components/SubscriptionGate'; // 👈 1. Imported SubscriptionGate
 import {
   LayoutGrid,
   PlusCircle,
@@ -73,8 +74,8 @@ function SidebarLink({ item, isActive, className }: { item: any, isActive: boole
       asChild
       isActive={isActive}
       tooltip={item.label}
-      // Added ${className} to the end of the class string
-      className={`hover:bg-orange-50 hover:text-orange-600 transition-colors cursor-pointer ${className}`}
+      // Added ${className || ""} to safely handle empty classes
+      className={`hover:bg-orange-50 hover:text-orange-600 transition-colors cursor-pointer ${className || ""}`}
     >
       <Link href={item.href} onClick={handleClick}>
         <item.icon />
@@ -158,8 +159,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </SidebarMenuItem>
 
                   {/* 2. Nested Management Links */}
-                  {/* Added 'ml-4' class to SidebarLink via our new prop to indent them */}
-                  
                   <SidebarMenuItem>
                     <SidebarLink 
                       item={{ href: '/admin/ads', label: 'Ads Manager', icon: Megaphone }} 
@@ -194,7 +193,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </header>
           
           <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full">
-            {children}
+            {/* 👇 2. WRAPPED CHILDREN WITH THE SUBSCRIPTION GATE */}
+            <SubscriptionGate>
+              {children}
+            </SubscriptionGate>
           </div>
         </SidebarInset>
       </div>
