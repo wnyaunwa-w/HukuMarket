@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ForceProfileUpdateModal } from '@/components/ForceProfileUpdateModal';
-import { SubscriptionGate } from '@/components/SubscriptionGate'; // 👈 1. Imported SubscriptionGate
+import { SubscriptionGate } from '@/components/SubscriptionGate';
 import {
   LayoutGrid,
   PlusCircle,
@@ -18,8 +18,9 @@ import {
   Menu,
   ShoppingBag,
   Heart,
-  Megaphone, // 👈 Imported for Ads
-  Users      // 👈 Imported for User Manager
+  Megaphone,
+  Users,
+  BadgeCheck // 👈 Added BadgeCheck icon import
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -37,12 +38,14 @@ import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
+// 👈 Updated menuItems to include 'Verify Badge'
 const menuItems = [
   { href: '/dashboard', label: 'Overview', icon: Home },
   { href: '/dashboard/favorites', label: 'Saved Farms', icon: Heart },
   { href: '/dashboard/profile', label: 'Profile', icon: UserCircle },
   { href: '/dashboard/listings', label: 'My Listings', icon: LayoutGrid },
   { href: '/dashboard/listings/new', label: 'Create Listing', icon: PlusCircle },
+  { href: '/dashboard/verify', label: 'Verify Badge', icon: BadgeCheck }, 
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -59,7 +62,7 @@ function MobileSidebarTrigger() {
   );
 }
 
-// UPDATED: Now accepts an optional 'className' prop for indentation
+// Wrapper for links to handle mobile closing automatically
 function SidebarLink({ item, isActive, className }: { item: any, isActive: boolean, className?: string }) {
   const { setOpenMobile, isMobile } = useSidebar();
 
@@ -74,7 +77,6 @@ function SidebarLink({ item, isActive, className }: { item: any, isActive: boole
       asChild
       isActive={isActive}
       tooltip={item.label}
-      // Added ${className || ""} to safely handle empty classes
       className={`hover:bg-orange-50 hover:text-orange-600 transition-colors cursor-pointer ${className || ""}`}
     >
       <Link href={item.href} onClick={handleClick}>
@@ -129,7 +131,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <SidebarMenu className="p-2 space-y-1">
               
-              {/* Back to Homepage Button */}
               <SidebarMenuItem>
                 <SidebarLink 
                   item={{ href: '/', label: 'Back to Market', icon: ShoppingBag }} 
@@ -145,12 +146,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </SidebarMenuItem>
               ))}
 
-              {/* 🔒 SUPER ADMIN SECTION */}
               {currentUser?.email === ADMIN_EMAIL && (
                 <>
                   <div className="my-2 border-t border-huku-tan/30 mx-2" />
                   
-                  {/* 1. Main Super Admin Dashboard (RESTORED) */}
                   <SidebarMenuItem>
                     <SidebarLink 
                       item={{ href: '/dashboard/admin', label: 'Super Admin', icon: ShieldCheck }} 
@@ -158,12 +157,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     />
                   </SidebarMenuItem>
 
-                  {/* 2. Nested Management Links */}
                   <SidebarMenuItem>
                     <SidebarLink 
                       item={{ href: '/admin/ads', label: 'Ads Manager', icon: Megaphone }} 
                       isActive={pathname === '/admin/ads'}
-                      className="ml-4 border-l-2 border-slate-200 pl-3 rounded-none h-9 text-slate-500" // 👈 Indentation Styling
+                      className="ml-4 border-l-2 border-slate-200 pl-3 rounded-none h-9 text-slate-500" 
                     />
                   </SidebarMenuItem>
 
@@ -171,7 +169,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <SidebarLink 
                       item={{ href: '/admin/users', label: 'User Manager', icon: Users }} 
                       isActive={pathname === '/admin/users'} 
-                      className="ml-4 border-l-2 border-slate-200 pl-3 rounded-none h-9 text-slate-500" // 👈 Indentation Styling
+                      className="ml-4 border-l-2 border-slate-200 pl-3 rounded-none h-9 text-slate-500" 
                     />
                   </SidebarMenuItem>
                 </>
@@ -193,7 +191,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </header>
           
           <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full">
-            {/* 👇 2. WRAPPED CHILDREN WITH THE SUBSCRIPTION GATE */}
             <SubscriptionGate>
               {children}
             </SubscriptionGate>
