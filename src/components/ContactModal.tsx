@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { X, Phone, User, MapPin, Star, MessageSquare, Loader2 } from "lucide-react";
-import { Batch, getUserProfile } from "@/lib/db-service"; // 👈 Imported getUserProfile
+import { Batch, getUserProfile } from "@/lib/db-service"; 
 import { useAuth } from "@/context/AuthContext";
 import { ReviewModal } from "./ReviewModal"; 
 import { ReviewsList } from "./ReviewsList"; 
@@ -15,17 +15,23 @@ export function ContactModal({ batch, onClose }: ContactModalProps) {
   const { currentUser } = useAuth();
   const [view, setView] = useState<"CONTACT" | "WRITE_REVIEW" | "READ_REVIEWS">("CONTACT");
   
-  // 👈 New State for Seller's Phone Number
   const [sellerPhone, setSellerPhone] = useState<string | null>(null);
   const [loadingPhone, setLoadingPhone] = useState(true);
 
-  // 👈 Fetch the seller's profile when the modal opens
+  // 👈 UPDATED: Look for both 'phoneNumber' and 'phone' in the database
   useEffect(() => {
     async function fetchSellerData() {
       if (batch.userId) {
-        const profile = await getUserProfile(batch.userId);
-        if (profile && profile.phone) {
-          setSellerPhone(profile.phone);
+        try {
+          const profile = await getUserProfile(batch.userId);
+          // Check for 'phoneNumber' (Firebase default) or 'phone' (custom)
+          const fetchedPhone = profile?.phoneNumber || profile?.phone;
+          
+          if (fetchedPhone) {
+            setSellerPhone(fetchedPhone);
+          }
+        } catch (error) {
+          console.error("Failed to fetch seller profile:", error);
         }
       }
       setLoadingPhone(false);
@@ -111,7 +117,6 @@ export function ContactModal({ batch, onClose }: ContactModalProps) {
             <Phone className="text-green-600 shrink-0" size={20} />
             <div>
               <p className="text-xs text-slate-400 uppercase font-bold">Phone / WhatsApp</p>
-              {/* 👈 Dynamically display the phone number or loading state */}
               {loadingPhone ? (
                  <Loader2 size={16} className="animate-spin text-slate-400 mt-1" />
               ) : (
