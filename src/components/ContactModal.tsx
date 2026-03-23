@@ -1,10 +1,10 @@
 "use client";
-import { useState } from "react";
-import { X, Phone, User, MapPin, Star, MessageSquare } from "lucide-react";
-import { Batch } from "@/lib/db-service";
+import { useState, useEffect } from "react";
+import { X, Phone, User, MapPin, Star, MessageSquare, Loader2 } from "lucide-react";
+import { Batch, getUserProfile } from "@/lib/db-service"; // 👈 Imported getUserProfile
 import { useAuth } from "@/context/AuthContext";
 import { ReviewModal } from "./ReviewModal"; 
-import { ReviewsList } from "./ReviewsList"; // <--- Import the new list
+import { ReviewsList } from "./ReviewsList"; 
 
 interface ContactModalProps {
   batch: Batch;
@@ -14,6 +14,24 @@ interface ContactModalProps {
 export function ContactModal({ batch, onClose }: ContactModalProps) {
   const { currentUser } = useAuth();
   const [view, setView] = useState<"CONTACT" | "WRITE_REVIEW" | "READ_REVIEWS">("CONTACT");
+  
+  // 👈 New State for Seller's Phone Number
+  const [sellerPhone, setSellerPhone] = useState<string | null>(null);
+  const [loadingPhone, setLoadingPhone] = useState(true);
+
+  // 👈 Fetch the seller's profile when the modal opens
+  useEffect(() => {
+    async function fetchSellerData() {
+      if (batch.userId) {
+        const profile = await getUserProfile(batch.userId);
+        if (profile && profile.phone) {
+          setSellerPhone(profile.phone);
+        }
+      }
+      setLoadingPhone(false);
+    }
+    fetchSellerData();
+  }, [batch.userId]);
 
   // 1. Show Write Review Form
   if (view === "WRITE_REVIEW" && currentUser) {
@@ -37,6 +55,23 @@ export function ContactModal({ batch, onClose }: ContactModalProps) {
     );
   }
 
+  // 📱 WhatsApp formatting helper
+  let waLink = "#";
+  let callLink = "#";
+  
+  if (sellerPhone) {
+    // Remove spaces, plus signs, brackets, and dashes
+    let cleanPhone = sellerPhone.replace(/[\s\+\-\(\)]/g, "");
+    
+    // If it's a local Zim number starting with 0, replace 0 with 263 for WhatsApp
+    if (cleanPhone.startsWith("0")) {
+      cleanPhone = "263" + cleanPhone.substring(1);
+    }
+    
+    waLink = `https://wa.me/${cleanPhone}`;
+    callLink = `tel:${sellerPhone}`;
+  }
+
   // 3. Default: Show Contact Details
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
@@ -55,7 +90,6 @@ export function ContactModal({ batch, onClose }: ContactModalProps) {
           <h2 className="text-xl font-bold text-slate-900">Contact Seller</h2>
           <p className="text-sm text-slate-500">Connect to buy this batch</p>
           
-          {/* LINK TO READ REVIEWS */}
           <button 
             onClick={() => setView("READ_REVIEWS")}
             className="text-xs font-bold text-orange-600 hover:underline mt-2 flex items-center justify-center gap-1"
@@ -73,20 +107,39 @@ export function ContactModal({ batch, onClose }: ContactModalProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 min-h-[64px]">
             <Phone className="text-green-600 shrink-0" size={20} />
             <div>
               <p className="text-xs text-slate-400 uppercase font-bold">Phone / WhatsApp</p>
-              <p className="font-medium text-slate-700">+263 77 123 4567</p>
+              {/* 👈 Dynamically display the phone number or loading state */}
+              {loadingPhone ? (
+                 <Loader2 size={16} className="animate-spin text-slate-400 mt-1" />
+              ) : (
+                 <p className="font-medium text-slate-700">
+                   {sellerPhone || "No phone provided"}
+                 </p>
+              )}
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <a href="tel:+263771234567" className="flex items-center justify-center gap-2 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition">
+          <a 
+            href={callLink} 
+            className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition ${
+              !sellerPhone ? "bg-slate-200 text-slate-400 pointer-events-none" : "bg-slate-900 text-white hover:bg-slate-800"
+            }`}
+          >
             <Phone size={18} /> Call
           </a>
-          <a href="https://wa.me/263771234567" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 text-white py-3 rounded-xl font-bold hover:bg-green-600 transition">
+          <a 
+            href={waLink} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition ${
+              !sellerPhone ? "bg-slate-200 text-slate-400 pointer-events-none" : "bg-green-500 text-white hover:bg-green-600"
+            }`}
+          >
             WhatsApp
           </a>
         </div>
