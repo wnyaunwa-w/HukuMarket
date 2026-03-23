@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"; // 👈 Added signInWithPopup
-import { auth, googleProvider } from "@/lib/firebase"; // 👈 Added googleProvider
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"; 
+import { auth, googleProvider, db } from "@/lib/firebase"; // 👈 Added db
+import { doc, getDoc } from "firebase/firestore"; // 👈 Added Firestore methods
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -19,16 +20,38 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
+  // 👈 HELPER: Fetch user role and route accordingly
+  const routeUserBasedOnRole = async (uid: string) => {
+    try {
+      const userDoc = await getDoc(doc(db, "users", uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        if (userData.role === "buyer") {
+          router.push("/");
+        } else {
+          router.push("/dashboard");
+        }
+      } else {
+        // Fallback if no profile is found
+        router.push("/"); 
+      }
+    } catch (err) {
+      console.error("Error fetching user role:", err);
+      router.push("/"); // Fallback
+    }
+  };
+
   // 🟢 DIRECT GOOGLE LOGIN HANDLER
   const handleGoogleLogin = async () => {
+    setLoading(true); // 👈 Set loading true to prevent multiple clicks
     setError("");
     try {
-      // Use the provider we explicitly exported in firebase.ts
-      await signInWithPopup(auth, googleProvider);
-      router.push("/dashboard");
+      const result = await signInWithPopup(auth, googleProvider);
+      await routeUserBasedOnRole(result.user.uid); // 👈 Route based on role
     } catch (err: any) {
       console.error("Google Login Error:", err);
       setError("Google Login failed. Please try again.");
+      setLoading(false); // Only turn off loading if there's an error
     }
   };
 
@@ -38,13 +61,12 @@ export default function LoginPage() {
     setError("");
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push("/dashboard");
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await routeUserBasedOnRole(userCredential.user.uid); // 👈 Route based on role
     } catch (err: any) {
       setError("Invalid email or password. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+      setLoading(false); // Only turn off loading if there's an error
+    } 
   };
 
   // Handle Forgot Password
@@ -77,11 +99,16 @@ export default function LoginPage() {
 
         {/* Google Login Button */}
         <button
-          onClick={handleGoogleLogin} // 👈 Updated handler
-          type="button" // 👈 Prevent form submission
-          className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 p-3 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition mb-6"
+          onClick={handleGoogleLogin} 
+          type="button" 
+          disabled={loading} // Prevent clicks while loading
+          className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 p-3 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition mb-6 disabled:opacity-50"
         >
-          <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-6 w-6" alt="Google" />
+          {loading ? (
+             <Loader2 className="animate-spin text-slate-400" />
+          ) : (
+             <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-6 w-6" alt="Google" />
+          )}
           Login with Google
         </button>
 
@@ -150,7 +177,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-900 text-white p-4 rounded-xl font-bold text-lg hover:bg-slate-800 transition shadow-lg shadow-slate-200 flex justify-center mt-2"
+            className="w-full bg-slate-900 text-white p-4 rounded-xl font-bold text-lg hover:bg-slate-800 transition shadow-lg shadow-slate-200 flex justify-center mt-2 disabled:opacity-50"
           >
             {loading ? <Loader2 className="animate-spin" /> : "Login"}
           </button>
