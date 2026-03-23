@@ -13,14 +13,14 @@ import { auth, db } from "@/lib/firebase";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { 
   Loader2, User, Tractor, CheckCircle2, 
-  Eye, EyeOff // 👈 Added eye icons
+  Eye, EyeOff 
 } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // 👈 State for visibility
+  const [showPassword, setShowPassword] = useState(false); 
   const [name, setName] = useState("");
   const [role, setRole] = useState<"buyer" | "farmer">("buyer");
   const [loading, setLoading] = useState(false);
@@ -55,7 +55,13 @@ export default function SignupPage() {
       const user = userCredential.user;
       await updateProfile(user, { displayName: name });
       await saveUserToDB(user);
-      router.push("/dashboard");
+      
+      // 👈 UPDATED ROUTING LOGIC
+      if (role === "buyer") {
+        router.push("/");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -70,7 +76,13 @@ export default function SignupPage() {
     try {
       const result = await signInWithPopup(auth, provider);
       await saveUserToDB(result.user);
-      router.push("/dashboard");
+      
+      // 👈 UPDATED ROUTING LOGIC
+      if (role === "buyer") {
+        router.push("/");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -132,7 +144,7 @@ export default function SignupPage() {
             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Password</label>
             <div className="relative">
               <input 
-                type={showPassword ? "text" : "password"} // 👈 Toggle type
+                type={showPassword ? "text" : "password"} 
                 required 
                 placeholder="••••••••" 
                 className="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-huku-orange outline-none transition pr-12" 
