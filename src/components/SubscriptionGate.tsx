@@ -1,22 +1,23 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore"; // 👈 Added query imports
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ShieldCheck, AlertTriangle, Clock } from "lucide-react"; 
 import { getSubscriptionFee } from "@/lib/db-service";
 import { differenceInDays, parseISO, format } from "date-fns"; 
+import { usePathname } from "next/navigation"; // 👈 Imported usePathname
 
 export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
+  const pathname = usePathname(); // 👈 Get the current URL path
   const [status, setStatus] = useState<any>(null);
   const [role, setRole] = useState<any>(null);
   const [expiryDate, setExpiryDate] = useState<string | null>(null);
   const [fee, setFee] = useState(5);
   const [loading, setLoading] = useState(true);
   
-  // 👈 State for Super Admin's Phone Number
-  const [adminPhone, setAdminPhone] = useState("+263 77 123 4567"); // Fallback
+  const [adminPhone, setAdminPhone] = useState("+263 77 123 4567"); 
 
   useEffect(() => {
     async function checkSubscription() {
@@ -34,7 +35,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
         const currentFee = await getSubscriptionFee();
         setFee(currentFee);
 
-        // 3. 👈 Fetch Super Admin's Phone Number dynamically
+        // 3. Fetch Super Admin's Phone Number dynamically
         try {
           const adminQuery = query(collection(db, "users"), where("email", "==", "wnyaunwa@gmail.com"));
           const adminSnap = await getDocs(adminQuery);
@@ -68,14 +69,25 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   }
 
   // --- 🔒 BLOCKING LOGIC ---
-  const shouldBlock = role === 'farmer' && (status !== 'active' || isExpired);
+  // 👈 NEW: Check if the user is trying to access ANY seller-specific pages
+  const isTryingToSell = pathname?.startsWith('/dashboard/listings');
+  
+  // Require subscription if they registered as a farmer OR if they are trying to sell
+  const requiresSubscription = role === 'farmer' || isTryingToSell;
+  const isNotActive = status !== 'active' || isExpired;
+
+  const shouldBlock = requiresSubscription && isNotActive;
 
   if (shouldBlock) {
-    // 📱 Format the dynamically fetched admin phone for the WhatsApp Link
     let cleanAdminPhone = adminPhone.replace(/[\s\+\-\(\)]/g, "");
     if (cleanAdminPhone.startsWith("0")) {
       cleanAdminPhone = "263" + cleanAdminPhone.substring(1);
     }
+
+    // 👈 Smart WhatsApp message based on whether it's a renewal or a new activation
+    const waMessage = isExpired 
+      ? "My subscription expired" 
+      : "I want to activate my seller account";
 
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 animate-in fade-in zoom-in duration-300">
@@ -107,22 +119,20 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
           <ul className="text-sm text-slate-600 text-left space-y-2 mb-4">
             <li>✅ Unlimited Listings</li>
             <li>✅ Buyer Notifications</li>
-            {/* 👈 Removed the Verified Badge line here */}
           </ul>
           
           {fee > 0 && (
              <div className="bg-slate-50 p-3 rounded-lg text-xs text-slate-500 text-left">
-              <strong>How to renew:</strong><br/>
-              {/* 👈 Dynamically display Admin Phone */}
+              <strong>How to activate:</strong><br/>
               1. Send ${fee} via Innbucks or EcoCash to: <strong>{adminPhone}</strong><br/>
               2. Send proof of payment to WhatsApp below.<br/>
-              3. We will reactivate your account immediately.
+              3. We will activate your account immediately.
             </div>
           )}
         </div>
 
         <a 
-          href={`https://wa.me/${cleanAdminPhone}?text=My%20subscription%20expired%20(Email:%20${currentUser?.email}).%20Here%20is%20my%20proof%20of%20payment.`} 
+          href={`https://wa.me/${cleanAdminPhone}?text=${waMessage}%20(Email:%20${currentUser?.email}).%20Here%20is%20my%20proof%20of%20payment.`} 
           target="_blank"
           rel="noopener noreferrer"
           className="bg-green-500 text-white px-8 py-3 rounded-full font-bold hover:bg-green-600 transition shadow-lg shadow-green-200"
