@@ -6,11 +6,11 @@ import { db } from "@/lib/firebase";
 import { ShieldCheck, AlertTriangle, Clock } from "lucide-react"; 
 import { getSubscriptionFee } from "@/lib/db-service";
 import { differenceInDays, parseISO, format } from "date-fns"; 
-import { usePathname } from "next/navigation"; // 👈 Imported usePathname
+import { usePathname } from "next/navigation"; 
 
 export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
-  const pathname = usePathname(); // 👈 Get the current URL path
+  const pathname = usePathname(); 
   const [status, setStatus] = useState<any>(null);
   const [role, setRole] = useState<any>(null);
   const [expiryDate, setExpiryDate] = useState<string | null>(null);
@@ -68,15 +68,17 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
     if (daysLeft < 0) isExpired = true;
   }
 
-  // --- 🔒 BLOCKING LOGIC ---
-  // 👈 NEW: Check if the user is trying to access ANY seller-specific pages
+  // --- 🔒 BULLETPROOF BLOCKING LOGIC ---
   const isTryingToSell = pathname?.startsWith('/dashboard/listings');
   
-  // Require subscription if they registered as a farmer OR if they are trying to sell
-  const requiresSubscription = role === 'farmer' || isTryingToSell;
-  const isNotActive = status !== 'active' || isExpired;
+  // 1. Are they a buyer trying to sneak into the seller pages?
+  const isBuyerTryingToSell = role === 'buyer' && isTryingToSell;
+  
+  // 2. Are they a farmer who hasn't paid or expired?
+  const isUnpaidFarmer = role === 'farmer' && (status !== 'active' || isExpired);
 
-  const shouldBlock = requiresSubscription && isNotActive;
+  // Block if either condition is true
+  const shouldBlock = isBuyerTryingToSell || isUnpaidFarmer;
 
   if (shouldBlock) {
     let cleanAdminPhone = adminPhone.replace(/[\s\+\-\(\)]/g, "");
@@ -84,10 +86,10 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
       cleanAdminPhone = "263" + cleanAdminPhone.substring(1);
     }
 
-    // 👈 Smart WhatsApp message based on whether it's a renewal or a new activation
-    const waMessage = isExpired 
-      ? "My subscription expired" 
-      : "I want to activate my seller account";
+    // Smart WhatsApp message based on their exact situation
+    let waMessage = "I want to activate my seller account";
+    if (isExpired) waMessage = "My subscription expired";
+    if (role === 'buyer') waMessage = "I am a buyer but I want to upgrade to a seller account";
 
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 animate-in fade-in zoom-in duration-300">
@@ -146,7 +148,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   // --- ⚠️ WARNING LOGIC (3 Days Left) ---
   return (
     <>
-      {!shouldBlock && daysLeft !== null && daysLeft <= 3 && daysLeft >= 0 && (
+      {!shouldBlock && daysLeft !== null && daysLeft <= 3 && daysLeft >= 0 && role === 'farmer' && (
         <div className="bg-orange-50 border-l-4 border-orange-500 p-4 mb-6 rounded-r-lg flex items-start gap-3">
           <AlertTriangle className="text-orange-500 shrink-0 mt-0.5" size={20} />
           <div>
