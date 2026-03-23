@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad, getUserProfile } from "@/lib/db-service"; 
 import { getGrowthStage } from "@/lib/chickenLogic";
 import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert } from "lucide-react"; 
-import Link from "next/link";
+import Link from "next/link"; // 👈 Ensure Link is imported
 import { RecordSaleModal } from "@/components/RecordSaleModal";
 import Image from "next/image";
 
@@ -67,7 +67,7 @@ export default function Dashboard() {
     <div className="max-w-4xl mx-auto pb-20">
       
       {/* HEADER */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-black text-slate-900 flex items-center gap-2">
             Dashboard
@@ -82,13 +82,17 @@ export default function Dashboard() {
               </span>
             )}
           </h1>
-          <p className="text-slate-500">Welcome, {currentUser?.displayName}</p>
+          <p className="text-slate-500">Welcome, {currentUser?.displayName || "Farmer"}</p>
         </div>
         
+        {/* 👈 UPDATED: "How to get verified?" is now a clickable Link */}
         {!userProfile?.isVerified && (
-           <button className="hidden md:flex text-xs font-bold text-slate-400 items-center gap-1 hover:text-huku-orange transition">
-             <ShieldAlert size={14} /> How to get verified?
-           </button>
+           <Link 
+             href="/dashboard/verify" 
+             className="flex text-xs font-bold text-slate-500 items-center gap-1 hover:text-blue-600 transition bg-white md:bg-transparent border md:border-transparent border-slate-200 p-2 md:p-0 rounded-lg md:rounded-none w-fit shadow-sm md:shadow-none"
+           >
+             <ShieldAlert size={14} className="text-blue-500" /> How to get verified?
+           </Link>
         )}
       </div>
 
