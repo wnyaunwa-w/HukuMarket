@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore"; // 👈 Added query imports
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 import { BadgeCheck, Clock, ShieldAlert, Upload, Loader2, CheckCircle2 } from "lucide-react";
@@ -13,6 +13,9 @@ export default function VerifyBadgePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  
+  // Admin Phone State
+  const [adminPhone, setAdminPhone] = useState("+263 77 123 4567");
 
   // Form State
   const [fullName, setFullName] = useState("");
@@ -23,6 +26,7 @@ export default function VerifyBadgePage() {
   useEffect(() => {
     async function fetchVerificationStatus() {
       if (currentUser) {
+        // 1. Fetch User Status
         const userDoc = await getDoc(doc(db, "users", currentUser.uid));
         if (userDoc.exists()) {
           const data = userDoc.data();
@@ -31,6 +35,21 @@ export default function VerifyBadgePage() {
           } else if (data.verificationStatus) {
             setStatus(data.verificationStatus);
           }
+        }
+
+        // 2. Fetch Super Admin's Phone Number dynamically
+        try {
+          const adminQuery = query(collection(db, "users"), where("email", "==", "wnyaunwa@gmail.com"));
+          const adminSnap = await getDocs(adminQuery);
+          if (!adminSnap.empty) {
+            const adminData = adminSnap.docs[0].data();
+            const fetchedPhone = adminData.phoneNumber || adminData.phone;
+            if (fetchedPhone) {
+              setAdminPhone(fetchedPhone);
+            }
+          }
+        } catch (error) {
+          console.error("Could not fetch admin phone number", error);
         }
       }
       setLoading(false);
@@ -67,6 +86,16 @@ export default function VerifyBadgePage() {
         }
       });
 
+      // 3. 📱 Format admin phone and redirect to WhatsApp for Proof of Payment
+      let cleanAdminPhone = adminPhone.replace(/[\s\+\-\(\)]/g, "");
+      if (cleanAdminPhone.startsWith("0")) {
+        cleanAdminPhone = "263" + cleanAdminPhone.substring(1);
+      }
+
+      const waMessage = encodeURIComponent(`Hello, I have submitted my KYC details for the Verified Badge. My email is ${currentUser.email}. Here is my $5 proof of payment:`);
+      window.open(`https://wa.me/${cleanAdminPhone}?text=${waMessage}`, "_blank");
+
+      // 4. Update UI Status
       setStatus("pending_admin_approval");
     } catch (err: any) {
       console.error(err);
@@ -87,10 +116,10 @@ export default function VerifyBadgePage() {
         </div>
         <h2 className="text-2xl font-black text-slate-900 mb-3">Application Under Review</h2>
         <p className="text-slate-500 mb-6">
-          Your KYC details have been securely submitted. Our Super Admin is currently reviewing your application.
+          Your KYC details have been securely submitted. 
         </p>
         <div className="bg-slate-50 p-4 rounded-xl text-sm text-slate-600 text-left">
-          <strong>Next Steps:</strong> Once your details are approved, you will be prompted to pay the $5 Annual Verification Fee to activate your blue badge.
+          <strong>Important:</strong> We can only process your verification after receiving your $5 payment proof via WhatsApp. If you haven't sent it yet, please send it to <strong>{adminPhone}</strong>.
         </div>
       </div>
     );
@@ -186,12 +215,23 @@ export default function VerifyBadgePage() {
           </div>
         </div>
 
+        {/* 👈 NEW: Payment Instructions Box */}
+        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+          <h4 className="font-bold text-slate-900 mb-2">Payment Required</h4>
+          <p className="text-sm text-slate-600 mb-3">
+            To complete your application, please send the <strong>$5 Annual Fee</strong> via Innbucks or EcoCash to: <strong className="text-slate-900">{adminPhone}</strong>
+          </p>
+          <p className="text-xs text-slate-500">
+            Clicking the button below will save your details and automatically open WhatsApp so you can send us the proof of payment.
+          </p>
+        </div>
+
         <button 
           type="submit" 
           disabled={submitting}
           className="w-full bg-slate-900 hover:bg-slate-800 text-white p-4 rounded-2xl font-black text-lg shadow-lg shadow-slate-200 transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
         >
-          {submitting ? <Loader2 className="animate-spin" /> : "Submit Application"}
+          {submitting ? <Loader2 className="animate-spin" /> : "Submit & Send Proof of Payment"}
         </button>
 
       </form>
