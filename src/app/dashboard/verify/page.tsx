@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore"; // 👈 Added query imports
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore"; 
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 import { BadgeCheck, Clock, ShieldAlert, Upload, Loader2, CheckCircle2 } from "lucide-react";
@@ -57,6 +57,15 @@ export default function VerifyBadgePage() {
     fetchVerificationStatus();
   }, [currentUser]);
 
+  // 📱 PREPARE THE WHATSAPP LINK DYNAMICALLY
+  let cleanAdminPhone = adminPhone.replace(/[\s\+\-\(\)]/g, "");
+  if (cleanAdminPhone.startsWith("0")) {
+    cleanAdminPhone = "263" + cleanAdminPhone.substring(1);
+  }
+  const waMessage = encodeURIComponent(`Hello, I have submitted my KYC details for the Verified Badge. My email is ${currentUser?.email}. Here is my $5 proof of payment:`);
+  const whatsappLink = `https://wa.me/${cleanAdminPhone}?text=${waMessage}`;
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !idFile) {
@@ -86,14 +95,8 @@ export default function VerifyBadgePage() {
         }
       });
 
-      // 3. 📱 Format admin phone and redirect to WhatsApp for Proof of Payment
-      let cleanAdminPhone = adminPhone.replace(/[\s\+\-\(\)]/g, "");
-      if (cleanAdminPhone.startsWith("0")) {
-        cleanAdminPhone = "263" + cleanAdminPhone.substring(1);
-      }
-
-      const waMessage = encodeURIComponent(`Hello, I have submitted my KYC details for the Verified Badge. My email is ${currentUser.email}. Here is my $5 proof of payment:`);
-      window.open(`https://wa.me/${cleanAdminPhone}?text=${waMessage}`, "_blank");
+      // 3. Try to open WhatsApp automatically (might be blocked by browser)
+      window.open(whatsappLink, "_blank");
 
       // 4. Update UI Status
       setStatus("pending_admin_approval");
@@ -107,7 +110,7 @@ export default function VerifyBadgePage() {
 
   if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-huku-orange" /></div>;
 
-  // VIEW 1: PENDING APPROVAL
+  // VIEW 1: PENDING APPROVAL (👈 UPDATED WITH MANUAL BUTTON)
   if (status === "pending_admin_approval") {
     return (
       <div className="max-w-2xl mx-auto text-center p-8 bg-white rounded-3xl border border-slate-100 shadow-sm mt-8 animate-in fade-in zoom-in duration-300">
@@ -116,10 +119,23 @@ export default function VerifyBadgePage() {
         </div>
         <h2 className="text-2xl font-black text-slate-900 mb-3">Application Under Review</h2>
         <p className="text-slate-500 mb-6">
-          Your KYC details have been securely submitted. 
+          Your KYC details have been securely submitted to HukuMarket. 
         </p>
-        <div className="bg-slate-50 p-4 rounded-xl text-sm text-slate-600 text-left">
-          <strong>Important:</strong> We can only process your verification after receiving your $5 payment proof via WhatsApp. If you haven't sent it yet, please send it to <strong>{adminPhone}</strong>.
+        
+        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-6">
+          <h4 className="font-bold text-slate-900 mb-2">Final Step: Send Payment Proof</h4>
+          <p className="text-sm text-slate-600 mb-4">
+            We can only process your verification after receiving your <strong>$5 Annual Fee</strong> payment proof.
+          </p>
+          
+          <a 
+            href={whatsappLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-green-200 w-full sm:w-auto"
+          >
+            Open WhatsApp to Send Proof
+          </a>
         </div>
       </div>
     );
@@ -215,14 +231,13 @@ export default function VerifyBadgePage() {
           </div>
         </div>
 
-        {/* 👈 NEW: Payment Instructions Box */}
         <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
           <h4 className="font-bold text-slate-900 mb-2">Payment Required</h4>
           <p className="text-sm text-slate-600 mb-3">
             To complete your application, please send the <strong>$5 Annual Fee</strong> via Innbucks or EcoCash to: <strong className="text-slate-900">{adminPhone}</strong>
           </p>
           <p className="text-xs text-slate-500">
-            Clicking the button below will save your details and automatically open WhatsApp so you can send us the proof of payment.
+            Clicking the button below will save your details. If WhatsApp doesn't open automatically, a button will appear on the next screen.
           </p>
         </div>
 
@@ -231,7 +246,7 @@ export default function VerifyBadgePage() {
           disabled={submitting}
           className="w-full bg-slate-900 hover:bg-slate-800 text-white p-4 rounded-2xl font-black text-lg shadow-lg shadow-slate-200 transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
         >
-          {submitting ? <Loader2 className="animate-spin" /> : "Submit & Send Proof of Payment"}
+          {submitting ? <Loader2 className="animate-spin" /> : "Submit & Pay $5"}
         </button>
 
       </form>
