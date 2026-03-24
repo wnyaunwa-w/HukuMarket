@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad, getUserProfile } from "@/lib/db-service"; 
+import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad, getUserProfile, updateBatchStock } from "@/lib/db-service"; // 👈 Added updateBatchStock
 import { getGrowthStage } from "@/lib/chickenLogic";
-import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert, ClockAlert } from "lucide-react"; 
+import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert, ClockAlert, CheckCircle2 } from "lucide-react"; // 👈 Added CheckCircle2
 import Link from "next/link";
 import { RecordSaleModal } from "@/components/RecordSaleModal";
-import Image from "next/image";
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -58,10 +57,24 @@ export default function Dashboard() {
     }
   };
 
-  // Only count birds that are NOT expired in the total stats
+  // 🟢 NEW: 1-Click Sold Out Handler
+  const handleMarkSoldOut = async (batch: Batch) => {
+    const confirmSoldOut = window.confirm("Mark this entire batch as Sold Out? This will instantly remove it from the marketplace.");
+    if (confirmSoldOut && batch.id) {
+      try {
+        // Reducing the stock by the current count brings it to exactly 0
+        await updateBatchStock(batch.id, batch.count); 
+      } catch (error) {
+        console.error("Failed to mark sold out", error);
+        alert("Failed to update status. Please try again.");
+      }
+    }
+  };
+
+  // Only count birds that are NOT expired AND NOT sold out in the total stats
   const activeBatchesList = batches.filter(b => {
       const { daysLeft } = getGrowthStage(b.hatchDate);
-      return daysLeft >= -14; 
+      return daysLeft >= -14 && b.count > 0; // 👈 Exclude zero-stock from stats
   });
   
   const totalBirds = activeBatchesList.reduce((acc, b) => acc + b.count, 0);
@@ -153,13 +166,14 @@ export default function Dashboard() {
           batches.map((batch) => {
             const { stage, progress, daysLeft, marketReadyDate } = getGrowthStage(batch.hatchDate);
             
-            // 👈 THE BIOLOGICAL CLOCK LOGIC
-            // If it's more than 14 days past market ready (approx 8 weeks old total)
+            // LOGIC FLAGS
             const isExpired = daysLeft < -14; 
+            const isSoldOut = batch.count <= 0;
+            const isHidden = isExpired || isSoldOut; // If either is true, grey out the card
             
             return (
               <div key={batch.id} className={`border-2 rounded-3xl p-6 relative group transition duration-300 ${
-                isExpired ? "bg-slate-50 border-slate-200 opacity-80" : "bg-huku-light border-huku-tan hover:shadow-lg"
+                isHidden ? "bg-slate-50 border-slate-200 opacity-80" : "bg-huku-light border-huku-tan hover:shadow-lg"
               }`}>
                 <button 
                   onClick={() => batch.id && handleDelete(batch.id)}
@@ -172,16 +186,20 @@ export default function Dashboard() {
                 <div className="flex justify-between items-start mb-6 pr-10">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className={`text-xl font-black ${isExpired ? "text-slate-500 line-through" : "text-slate-900"}`}>
+                      <h3 className={`text-xl font-black ${isHidden ? "text-slate-500 line-through" : "text-slate-900"}`}>
                         {batch.breed}
                       </h3>
                       
-                      {!isExpired && userProfile?.isVerified && (
+                      {!isHidden && userProfile?.isVerified && (
                         <BadgeCheck size={18} className="text-blue-500 fill-blue-100" />
                       )}
 
-                      {/* Dynamic Status Badge */}
-                      {isExpired ? (
+                      {/* Dynamic Status Badges */}
+                      {isSoldOut ? (
+                        <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1 flex items-center gap-1">
+                          <CheckCircle2 size={12} /> Sold Out
+                        </span>
+                      ) : isExpired ? (
                         <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1 flex items-center gap-1">
                           <ClockAlert size={12} /> Auto-Archived
                         </span>
@@ -193,13 +211,13 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-4 text-sm text-slate-500">
                       <span>📍 {batch.location}</span>
-                      <span>👤 {batch.count} Birds</span>
+                      <span className={isSoldOut ? "text-green-600 font-bold" : ""}>👤 {batch.count} Birds</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Hide the progress bar if expired */}
-                {!isExpired && (
+                {/* Hide the progress bar if hidden */}
+                {!isHidden && (
                   <div className="mb-6">
                      <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
                        <span>Day {Math.floor(progress * 0.42)}</span>
@@ -216,19 +234,32 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* Actions: Show warning if expired, otherwise show standard Record Sale */}
-                {isExpired ? (
+                {/* DYNAMIC ACTIONS */}
+                {isSoldOut ? (
+                  <div className="w-full bg-green-50/50 border border-green-200 text-green-700 py-3 rounded-xl text-sm font-bold flex flex-col items-center justify-center gap-1">
+                    <span>🎉 Batch Sold Out</span>
+                    <span className="text-xs font-medium text-green-600">This listing is no longer on the marketplace.</span>
+                  </div>
+                ) : isExpired ? (
                   <div className="w-full bg-red-50/50 border border-red-100 text-red-600 py-3 rounded-xl text-sm font-bold flex flex-col items-center justify-center gap-1">
                     <span>⚠️ Hidden from Marketplace</span>
-                    <span className="text-xs font-medium text-red-400">Batch is over 8 weeks old. Please delete if sold out.</span>
+                    <span className="text-xs font-medium text-red-400">Batch is over 8 weeks old. Please delete or mark as sold out.</span>
                   </div>
                 ) : (
-                  <button 
-                    onClick={() => setSelectedBatch(batch)}
-                    className="w-full bg-white border-2 border-huku-tan text-slate-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-huku-orange hover:text-huku-orange transition"
-                  >
-                    Record Sale (birds sold) <TrendingUp size={18} />
-                  </button>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setSelectedBatch(batch)}
+                      className="flex-1 bg-white border-2 border-huku-tan text-slate-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-huku-orange hover:text-huku-orange transition text-sm sm:text-base"
+                    >
+                      Record Sale <TrendingUp size={18} />
+                    </button>
+                    <button 
+                      onClick={() => handleMarkSoldOut(batch)}
+                      className="flex-1 bg-green-50 border-2 border-green-200 text-green-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-100 hover:border-green-300 transition text-sm sm:text-base"
+                    >
+                      Sold Out <CheckCircle2 size={18} />
+                    </button>
+                  </div>
                 )}
 
               </div>
