@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { getAllAds, createAd, deleteAd, toggleAdStatus, Ad, uploadAdAsset } from "@/lib/db-service";
+import { doc, updateDoc } from "firebase/firestore"; 
+import { db } from "@/lib/firebase"; 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus, Power, ExternalLink, Image as ImageIcon, Loader2, ArrowLeft, Upload, X, MessageCircle, Calendar } from "lucide-react";
+import { Trash2, Plus, Power, ExternalLink, Image as ImageIcon, Loader2, ArrowLeft, Upload, X, Calendar, Edit, Link as LinkIcon, LayoutTemplate } from "lucide-react"; // 👈 Added LayoutTemplate
 import Link from "next/link";
 import Image from "next/image";
 
@@ -18,6 +20,7 @@ export default function AdManager() {
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [editingAdId, setEditingAdId] = useState<string | null>(null);
   
   // Upload States
   const [uploading, setUploading] = useState(false);
@@ -33,8 +36,8 @@ export default function AdManager() {
     imageUrl: "", 
     logoUrl: "",  
     link: "",
-    ctaText: "Chat on WhatsApp",
-    type: "dashboard_banner" as const,
+    ctaText: "Shop Now", 
+    type: "dashboard_banner" as 'dashboard_banner' | 'feed_card', // 👈 Typed explicitly
     active: true,
     startDate: "",
     endDate: ""
@@ -42,15 +45,12 @@ export default function AdManager() {
 
   // 🔒 STRICT SECURITY CHECK
   useEffect(() => {
-    // 1. If user is logged in...
     if (currentUser) {
-        // 2. Check if email matches the Admin Email
         if (currentUser.email !== ADMIN_EMAIL) {
             alert("⛔️ Access Denied: You do not have permission to view the Ad Manager.");
-            router.push("/dashboard"); // Kick them out
+            router.push("/dashboard"); 
         }
     } else if (!loading && !currentUser) {
-        // 3. If not logged in at all, send to login
         router.push("/login"); 
     }
   }, [currentUser, loading, router]);
@@ -63,8 +63,8 @@ export default function AdManager() {
 
   useEffect(() => {
     return () => {
-      if (bannerPreview) URL.revokeObjectURL(bannerPreview);
-      if (logoPreview) URL.revokeObjectURL(logoPreview);
+      if (bannerPreview && !bannerPreview.startsWith('http')) URL.revokeObjectURL(bannerPreview);
+      if (logoPreview && !logoPreview.startsWith('http')) URL.revokeObjectURL(logoPreview);
     };
   }, [bannerPreview, logoPreview]);
 
@@ -87,9 +87,10 @@ export default function AdManager() {
 
   const resetForm = () => {
     setIsCreating(false);
+    setEditingAdId(null);
     setNewAd({ 
         title: "", description: "", imageUrl: "", logoUrl: "", link: "", 
-        ctaText: "Chat on WhatsApp", type: "dashboard_banner", active: true,
+        ctaText: "Shop Now", type: "dashboard_banner", active: true,
         startDate: "", endDate: "" 
     });
     setBannerFile(null);
@@ -98,46 +99,74 @@ export default function AdManager() {
     setLogoPreview("");
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleEditClick = (ad: Ad) => {
+    setEditingAdId(ad.id);
+    setNewAd({
+      title: ad.title,
+      description: ad.description,
+      imageUrl: ad.imageUrl,
+      logoUrl: ad.logoUrl,
+      link: ad.link,
+      ctaText: ad.ctaText,
+      type: ad.type,
+      active: ad.active,
+      startDate: ad.startDate || "",
+      endDate: ad.endDate || ""
+    });
+    setBannerPreview(ad.imageUrl);
+    setLogoPreview(ad.logoUrl);
+    setBannerFile(null);
+    setLogoFile(null);
+    setIsCreating(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newAd.title || !newAd.description || !bannerFile || !logoFile) {
-      alert("Please fill in required text fields and upload both banner and logo images.");
+    if (!newAd.title || !newAd.description || (!editingAdId && (!bannerFile || !logoFile))) {
+      alert("Please fill in required text fields and ensure images are uploaded.");
       return;
     }
 
     let cleanLink = newAd.link.trim();
-    if (!cleanLink.startsWith("https://wa.me/")) {
-        if(cleanLink.startsWith("263") || cleanLink.startsWith("+263")) {
-             cleanLink = `https://wa.me/${cleanLink.replace('+', '')}`;
-        } else {
-             alert("The Target Link must be a valid WhatsApp URL starting with 'https://wa.me/'.");
-             return;
-        }
+    if (!cleanLink.startsWith("http://") && !cleanLink.startsWith("https://")) {
+        cleanLink = `https://${cleanLink}`;
     }
 
     try {
       setUploading(true);
 
-      const [bannerUrl, logoUrl] = await Promise.all([
-        uploadAdAsset(bannerFile, 'banners'),
-        uploadAdAsset(logoFile, 'logos')
-      ]);
+      let finalBannerUrl = newAd.imageUrl;
+      let finalLogoUrl = newAd.logoUrl;
+
+      if (bannerFile) {
+        finalBannerUrl = await uploadAdAsset(bannerFile, 'banners');
+      }
+      if (logoFile) {
+        finalLogoUrl = await uploadAdAsset(logoFile, 'logos');
+      }
       
-      await createAd({
+      const adDataToSave = {
         ...newAd,
-        imageUrl: bannerUrl,
-        logoUrl: logoUrl,
+        imageUrl: finalBannerUrl,
+        logoUrl: finalLogoUrl,
         link: cleanLink,
         startDate: newAd.startDate || undefined,
         endDate: newAd.endDate || undefined
-      });
+      };
+
+      if (editingAdId) {
+        await updateDoc(doc(db, "ads", editingAdId), adDataToSave);
+      } else {
+        await createAd(adDataToSave);
+      }
 
       resetForm();
       loadAds(); 
     } catch (error) {
         console.error(error);
-        alert("Failed to upload images or create ad.");
+        alert("Failed to save ad.");
     } finally {
       setUploading(false);
     }
@@ -166,8 +195,6 @@ export default function AdManager() {
   };
 
   if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-huku-orange" /></div>;
-  
-  // 🔒 Extra safety: Don't render UI if email doesn't match
   if (currentUser?.email !== ADMIN_EMAIL) return null;
 
   return (
@@ -195,24 +222,24 @@ export default function AdManager() {
           )}
         </div>
 
-        {/* 📝 CREATE FORM */}
+        {/* 📝 CREATE / EDIT FORM */}
         {isCreating && (
           <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 mb-8 animate-in fade-in slide-in-from-top-4 relative">
             {uploading && (
                 <div className="absolute inset-0 bg-white/80 z-50 flex flex-col items-center justify-center rounded-3xl">
                     <Loader2 className="animate-spin text-huku-orange mb-2" size={40} />
-                    <p className="font-bold text-slate-600">Uploading Assets...</p>
+                    <p className="font-bold text-slate-600">{editingAdId ? "Updating Ad..." : "Uploading Assets..."}</p>
                 </div>
             )}
 
             <div className="flex justify-between items-center mb-6">
-                <h2 className="font-black text-2xl text-slate-900">Create New Ad</h2>
+                <h2 className="font-black text-2xl text-slate-900">{editingAdId ? "Edit Campaign" : "Create New Ad"}</h2>
                 <button onClick={resetForm} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200">
                     <X size={20} />
                 </button>
             </div>
             
-            <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
               
               {/* LEFT COLUMN */}
               <div className="space-y-6">
@@ -221,10 +248,27 @@ export default function AdManager() {
                   <input required type="text" placeholder="e.g. 10% Off Feed" className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-huku-orange font-bold text-slate-800" 
                     value={newAd.title} onChange={e => setNewAd({...newAd, title: e.target.value})} />
                 </div>
+                
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Description</label>
                   <textarea required rows={3} placeholder="e.g. Buy 20 bags..." className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-huku-orange font-medium text-slate-600 resize-none"
                     value={newAd.description} onChange={e => setNewAd({...newAd, description: e.target.value})} />
+                </div>
+
+                {/* 👈 NEW: AD PLACEMENT DROPDOWN */}
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-600 uppercase mb-2">
+                    <LayoutTemplate size={14} /> Ad Placement
+                  </label>
+                  <select 
+                    required 
+                    className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-huku-orange font-bold text-slate-800 appearance-none"
+                    value={newAd.type} 
+                    onChange={e => setNewAd({...newAd, type: e.target.value as 'dashboard_banner' | 'feed_card'})}
+                  >
+                    <option value="feed_card">Marketplace Feed (Between Listings)</option>
+                    <option value="dashboard_banner">Dashboard Banner (Top of Dashboard)</option>
+                  </select>
                 </div>
 
                 {/* 🗓️ DATE RANGE PICKER */}
@@ -242,15 +286,15 @@ export default function AdManager() {
                 </div>
 
                  <div>
-                    <label className="flex items-center gap-2 text-xs font-bold text-green-600 uppercase mb-2">
-                        <MessageCircle size={14} /> WhatsApp Target Link
+                    <label className="flex items-center gap-2 text-xs font-bold text-blue-600 uppercase mb-2">
+                        <LinkIcon size={14} /> Target URL Link
                     </label>
-                    <input required type="url" placeholder="https://wa.me/263..." className="w-full p-3 bg-green-50/50 rounded-xl border border-green-200 outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm text-green-800"
+                    <input required type="text" placeholder="https://yourwebsite.com OR https://wa.me/..." className="w-full p-3 bg-blue-50/50 rounded-xl border border-blue-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-blue-800"
                     value={newAd.link} onChange={e => setNewAd({...newAd, link: e.target.value})} />
                 </div>
                  <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Button Text</label>
-                    <input required type="text" placeholder="Chat on WhatsApp" className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-huku-orange font-bold"
+                    <input required type="text" placeholder="e.g. Shop Now" className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-huku-orange font-bold"
                     value={newAd.ctaText} onChange={e => setNewAd({...newAd, ctaText: e.target.value})} />
                 </div>
               </div>
@@ -282,7 +326,7 @@ export default function AdManager() {
 
               <div className="md:col-span-2 border-t border-slate-100 pt-6 mt-2 flex justify-end">
                  <button type="submit" disabled={uploading} className="px-8 py-4 rounded-xl font-black bg-huku-orange text-white hover:bg-orange-600 transition shadow-lg flex items-center gap-2">
-                    {uploading ? <Loader2 className="animate-spin" /> : <Upload size={20} />} Create Campaign
+                    {uploading ? <Loader2 className="animate-spin" /> : <Upload size={20} />} {editingAdId ? "Save Changes" : "Create Campaign"}
                  </button>
               </div>
             </form>
@@ -303,6 +347,9 @@ export default function AdManager() {
 
               {/* Actions Overlay */}
               <div className="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <button onClick={() => handleEditClick(ad)} className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm hover:bg-blue-50 text-blue-600">
+                   <Edit size={16} />
+                 </button>
                  <button onClick={() => handleToggle(ad.id, ad.active)} className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm hover:bg-slate-50 text-slate-600">
                    <Power size={16} />
                  </button>
@@ -323,6 +370,11 @@ export default function AdManager() {
 
               {/* Info */}
               <div className="p-4">
+                 {/* 👈 NEW: Placement Indicator */}
+                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 pb-2 border-b border-slate-100">
+                    Placement: {ad.type === 'dashboard_banner' ? 'Dashboard Banner' : 'Marketplace Feed'}
+                 </div>
+
                  <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
                     <Calendar size={14} />
                     {ad.endDate ? `Ends: ${ad.endDate}` : "Run indefinitely"}

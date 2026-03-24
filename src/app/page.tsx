@@ -2,16 +2,17 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { Navbar } from "@/components/Navbar";
-import { getAllBatches, Batch } from "@/lib/db-service";
+import { getAllBatches, Batch, getActiveAds, Ad } from "@/lib/db-service"; // 👈 Added getActiveAds & Ad
 import { ListingCard } from "@/components/ListingCard";
 import { ContactModal } from "@/components/ContactModal";
-import { SponsoredAdCard } from "@/components/SponsoredAdCard"; // 👈 Imported Ad Component
+import { SponsoredAdCard } from "@/components/SponsoredAdCard"; 
 import { Loader2, Search, MapPin, HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
 // Sub-component to handle search params safely in Next.js
 function MarketContent() {
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [feedAds, setFeedAds] = useState<Ad[]>([]); // 👈 State for dynamic ads
   const [loading, setLoading] = useState(true);
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -23,12 +24,23 @@ function MarketContent() {
   const highlightId = searchParams.get('highlight');
 
   useEffect(() => {
-    async function loadBatches() {
-      const data = await getAllBatches();
-      setBatches(data);
-      setLoading(false);
+    async function loadMarketData() {
+      try {
+        // Fetch both batches and active feed ads in parallel
+        const [batchesData, adsData] = await Promise.all([
+          getAllBatches(),
+          getActiveAds("feed_card") // 👈 Fetch only active ads meant for the feed
+        ]);
+        
+        setBatches(batchesData);
+        setFeedAds(adsData);
+      } catch (error) {
+        console.error("Failed to load market data", error);
+      } finally {
+        setLoading(false);
+      }
     }
-    loadBatches();
+    loadMarketData();
   }, []);
 
   useEffect(() => {
@@ -127,43 +139,33 @@ function MarketContent() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredBatches.map((batch, index) => {
-              // 📢 INJECT AD 1: Feed Company (After 6th listing)
-              if (index === 5) {
-                return (
-                  <>
-                    <SponsoredAdCard 
-                      title="SuperGrow Broiler Feed"
-                      description="Get the best weight gain in 6 weeks! Order bulk starter & finisher pellets today."
-                      image="https://images.unsplash.com/photo-1605000797499-95a059e69528?q=80&w=800&auto=format&fit=crop"
-                      link="https://www.agrifoods.co.zw" 
-                    />
-                    <ListingCard key={batch.id} batch={batch} onContact={(b) => setSelectedBatch(b)} />
-                  </>
-                );
-              }
               
-              // 📢 INJECT AD 2: Hatchery (After 11th listing)
-              if (index === 10) {
-                return (
-                  <>
-                     <SponsoredAdCard 
-                      title="Premium Cobb 500 Chicks"
-                      description="Disease-free day-old chicks available every Tuesday. Book your batch now!"
-                      image="https://images.unsplash.com/photo-1543438407-16062e70a1a5?q=80&w=800&auto=format&fit=crop"
-                      link="https://www.irvines.co.zw" 
-                      ctaText="Book Chicks"
-                    />
-                    <ListingCard key={batch.id} batch={batch} onContact={(b) => setSelectedBatch(b)} />
-                  </>
-                )
-              }
+              // 📢 DYNAMIC AD INJECTION
+              // We inject an ad every 6th listing (index 5, 11, 17, etc.)
+              const isAdSpot = (index + 1) % 6 === 0;
+              // Figure out which ad to show based on the spot index
+              const adIndex = Math.floor(index / 6); 
+              const adToShow = isAdSpot && feedAds.length > 0 ? feedAds[adIndex % feedAds.length] : null;
 
               return (
-                <ListingCard 
-                  key={batch.id} 
-                  batch={batch} 
-                  onContact={(b) => setSelectedBatch(b)} 
-                />
+                <div key={`wrapper-${batch.id}`}>
+                  {/* The Listing */}
+                  <ListingCard batch={batch} onContact={(b) => setSelectedBatch(b)} />
+                  
+                  {/* The Dynamic Ad (if it's the right spot) */}
+                  {adToShow && (
+                    <div className="mt-8">
+                      <SponsoredAdCard 
+                        title={adToShow.title}
+                        description={adToShow.description}
+                        image={adToShow.imageUrl}
+                        link={adToShow.link} 
+                        ctaText={adToShow.ctaText}
+                        logoUrl={adToShow.logoUrl}
+                      />
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
