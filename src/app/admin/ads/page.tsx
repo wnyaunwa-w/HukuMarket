@@ -6,7 +6,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase"; 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus, Power, ExternalLink, Image as ImageIcon, Loader2, ArrowLeft, Upload, X, Calendar, Edit, Link as LinkIcon, LayoutTemplate } from "lucide-react"; // 👈 Added LayoutTemplate
+import { Trash2, Plus, Power, ExternalLink, Image as ImageIcon, Loader2, ArrowLeft, Upload, X, Calendar, Edit, Link as LinkIcon, LayoutTemplate } from "lucide-react"; 
 import Link from "next/link";
 import Image from "next/image";
 
@@ -37,7 +37,7 @@ export default function AdManager() {
     logoUrl: "",  
     link: "",
     ctaText: "Shop Now", 
-    type: "dashboard_banner" as 'dashboard_banner' | 'feed_card', // 👈 Typed explicitly
+    type: "dashboard_banner" as 'dashboard_banner' | 'feed_card', 
     active: true,
     startDate: "",
     endDate: ""
@@ -152,8 +152,9 @@ export default function AdManager() {
         imageUrl: finalBannerUrl,
         logoUrl: finalLogoUrl,
         link: cleanLink,
-        startDate: newAd.startDate || undefined,
-        endDate: newAd.endDate || undefined
+        // 👈 FIX: Save empty string instead of undefined so Firebase doesn't crash
+        startDate: newAd.startDate || "",
+        endDate: newAd.endDate || ""
       };
 
       if (editingAdId) {
@@ -166,7 +167,7 @@ export default function AdManager() {
       loadAds(); 
     } catch (error) {
         console.error(error);
-        alert("Failed to save ad.");
+        alert("Failed to save ad. Check the console for details.");
     } finally {
       setUploading(false);
     }
@@ -255,7 +256,7 @@ export default function AdManager() {
                     value={newAd.description} onChange={e => setNewAd({...newAd, description: e.target.value})} />
                 </div>
 
-                {/* 👈 NEW: AD PLACEMENT DROPDOWN */}
+                {/* AD PLACEMENT DROPDOWN */}
                 <div>
                   <label className="flex items-center gap-2 text-xs font-bold text-slate-600 uppercase mb-2">
                     <LayoutTemplate size={14} /> Ad Placement
@@ -370,7 +371,6 @@ export default function AdManager() {
 
               {/* Info */}
               <div className="p-4">
-                 {/* 👈 NEW: Placement Indicator */}
                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 pb-2 border-b border-slate-100">
                     Placement: {ad.type === 'dashboard_banner' ? 'Dashboard Banner' : 'Marketplace Feed'}
                  </div>
