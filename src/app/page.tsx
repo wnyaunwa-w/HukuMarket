@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, Fragment } from "react"; // 👈 Added Fragment
 import { Navbar } from "@/components/Navbar";
-import { getAllBatches, Batch, getActiveAds, Ad } from "@/lib/db-service"; // 👈 Added getActiveAds & Ad
+import { getAllBatches, Batch, getActiveAds, Ad } from "@/lib/db-service"; 
 import { ListingCard } from "@/components/ListingCard";
 import { ContactModal } from "@/components/ContactModal";
 import { SponsoredAdCard } from "@/components/SponsoredAdCard"; 
@@ -12,7 +12,7 @@ import { useSearchParams } from "next/navigation";
 // Sub-component to handle search params safely in Next.js
 function MarketContent() {
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [feedAds, setFeedAds] = useState<Ad[]>([]); // 👈 State for dynamic ads
+  const [feedAds, setFeedAds] = useState<Ad[]>([]); 
   const [loading, setLoading] = useState(true);
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -26,10 +26,9 @@ function MarketContent() {
   useEffect(() => {
     async function loadMarketData() {
       try {
-        // Fetch both batches and active feed ads in parallel
         const [batchesData, adsData] = await Promise.all([
           getAllBatches(),
-          getActiveAds("feed_card") // 👈 Fetch only active ads meant for the feed
+          getActiveAds("feed_card") 
         ]);
         
         setBatches(batchesData);
@@ -141,31 +140,31 @@ function MarketContent() {
             {filteredBatches.map((batch, index) => {
               
               // 📢 DYNAMIC AD INJECTION
-              // We inject an ad every 6th listing (index 5, 11, 17, etc.)
-              const isAdSpot = (index + 1) % 6 === 0;
-              // Figure out which ad to show based on the spot index
-              const adIndex = Math.floor(index / 6); 
+              // 👇 Change this number to control how often ads appear
+              const AD_FREQUENCY = 4; 
+              
+              const isAdSpot = (index + 1) % AD_FREQUENCY === 0;
+              const adIndex = Math.floor(index / AD_FREQUENCY); 
               const adToShow = isAdSpot && feedAds.length > 0 ? feedAds[adIndex % feedAds.length] : null;
 
               return (
-                <div key={`wrapper-${batch.id}`}>
+                // 👈 FIX: Changed from a <div> wrapper to a <Fragment> so the Ad gets its own grid slot
+                <Fragment key={`wrapper-${batch.id}`}>
                   {/* The Listing */}
                   <ListingCard batch={batch} onContact={(b) => setSelectedBatch(b)} />
                   
-                  {/* The Dynamic Ad (if it's the right spot) */}
+                  {/* The Dynamic Ad */}
                   {adToShow && (
-                    <div className="mt-8">
-                      <SponsoredAdCard 
-                        title={adToShow.title}
-                        description={adToShow.description}
-                        image={adToShow.imageUrl}
-                        link={adToShow.link} 
-                        ctaText={adToShow.ctaText}
-                        logoUrl={adToShow.logoUrl}
-                      />
-                    </div>
+                    <SponsoredAdCard 
+                      title={adToShow.title}
+                      description={adToShow.description}
+                      image={adToShow.imageUrl}
+                      link={adToShow.link} 
+                      ctaText={adToShow.ctaText}
+                      logoUrl={adToShow.logoUrl}
+                    />
                   )}
-                </div>
+                </Fragment>
               );
             })}
           </div>
