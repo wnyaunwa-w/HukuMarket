@@ -16,6 +16,7 @@ import {
   deleteDoc 
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getGrowthStage } from "@/lib/chickenLogic"; // 👈 1. Imported biological clock logic
 
 // --- BATCH LOGIC ---
 
@@ -68,7 +69,21 @@ export async function getAllBatches() {
   try {
     const q = query(collection(db, "batches"), orderBy("createdAt", "desc"));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Batch[];
+    const allBatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Batch[];
+
+    // 👈 2. THE BIOLOGICAL CLOCK & ZERO-STOCK FILTER
+    return allBatches.filter(batch => {
+      // 1. Hide if sold out (count is 0 or less)
+      if (batch.count <= 0) return false;
+
+      // 2. Hide if biological clock expired (>14 days past market ready)
+      const { daysLeft } = getGrowthStage(batch.hatchDate);
+      if (daysLeft < -14) return false;
+
+      // Otherwise, show it on the market!
+      return true; 
+    });
+
   } catch (error) {
     console.error("Error fetching market:", error);
     return [];

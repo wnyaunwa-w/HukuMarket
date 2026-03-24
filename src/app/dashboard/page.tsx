@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad, getUserProfile } from "@/lib/db-service"; 
 import { getGrowthStage } from "@/lib/chickenLogic";
-import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert } from "lucide-react"; 
-import Link from "next/link"; // 👈 Ensure Link is imported
+import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert, ClockAlert } from "lucide-react"; 
+import Link from "next/link";
 import { RecordSaleModal } from "@/components/RecordSaleModal";
 import Image from "next/image";
 
@@ -58,8 +58,14 @@ export default function Dashboard() {
     }
   };
 
-  const totalBirds = batches.reduce((acc, b) => acc + b.count, 0);
-  const activeBatches = batches.length;
+  // Only count birds that are NOT expired in the total stats
+  const activeBatchesList = batches.filter(b => {
+      const { daysLeft } = getGrowthStage(b.hatchDate);
+      return daysLeft >= -14; 
+  });
+  
+  const totalBirds = activeBatchesList.reduce((acc, b) => acc + b.count, 0);
+  const activeBatches = activeBatchesList.length;
 
   if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-huku-orange" /></div>;
 
@@ -71,7 +77,6 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-black text-slate-900 flex items-center gap-2">
             Dashboard
-            {/* Header Badge */}
             {userProfile?.isVerified ? (
               <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider border border-blue-200">
                 <BadgeCheck size={14} className="fill-blue-500 text-white" /> Verified Farmer
@@ -85,7 +90,6 @@ export default function Dashboard() {
           <p className="text-slate-500">Welcome, {currentUser?.displayName || "Farmer"}</p>
         </div>
         
-        {/* 👈 UPDATED: "How to get verified?" is now a clickable Link */}
         {!userProfile?.isVerified && (
            <Link 
              href="/dashboard/verify" 
@@ -99,7 +103,7 @@ export default function Dashboard() {
       {/* STATS */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="bg-orange-50 p-6 rounded-3xl border border-huku-orange/20">
-          <p className="text-xs font-bold text-huku-orange uppercase tracking-wider mb-1">Total Birds</p>
+          <p className="text-xs font-bold text-huku-orange uppercase tracking-wider mb-1">Active Birds</p>
           <h3 className="text-4xl font-black text-slate-900">{totalBirds.toLocaleString()}</h3>
         </div>
         <div className="bg-orange-50 p-6 rounded-3xl border border-huku-orange/20">
@@ -149,8 +153,14 @@ export default function Dashboard() {
           batches.map((batch) => {
             const { stage, progress, daysLeft, marketReadyDate } = getGrowthStage(batch.hatchDate);
             
+            // 👈 THE BIOLOGICAL CLOCK LOGIC
+            // If it's more than 14 days past market ready (approx 8 weeks old total)
+            const isExpired = daysLeft < -14; 
+            
             return (
-              <div key={batch.id} className="bg-huku-light border-2 border-huku-tan rounded-3xl p-6 relative group transition hover:shadow-lg">
+              <div key={batch.id} className={`border-2 rounded-3xl p-6 relative group transition duration-300 ${
+                isExpired ? "bg-slate-50 border-slate-200 opacity-80" : "bg-huku-light border-huku-tan hover:shadow-lg"
+              }`}>
                 <button 
                   onClick={() => batch.id && handleDelete(batch.id)}
                   className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
@@ -162,16 +172,24 @@ export default function Dashboard() {
                 <div className="flex justify-between items-start mb-6 pr-10">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-xl font-black text-slate-900">{batch.breed}</h3>
+                      <h3 className={`text-xl font-black ${isExpired ? "text-slate-500 line-through" : "text-slate-900"}`}>
+                        {batch.breed}
+                      </h3>
                       
-                      {/* 🛡️ VERIFIED BADGE ON CARD */}
-                      {userProfile?.isVerified && (
+                      {!isExpired && userProfile?.isVerified && (
                         <BadgeCheck size={18} className="text-blue-500 fill-blue-100" />
                       )}
 
-                      <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1">
-                        {stage}
-                      </span>
+                      {/* Dynamic Status Badge */}
+                      {isExpired ? (
+                        <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1 flex items-center gap-1">
+                          <ClockAlert size={12} /> Auto-Archived
+                        </span>
+                      ) : (
+                        <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1">
+                          {stage}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-slate-500">
                       <span>📍 {batch.location}</span>
@@ -180,27 +198,38 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="mb-6">
-                   <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
-                     <span>Day {Math.floor(progress * 0.42)}</span>
-                     <span className={daysLeft <= 3 ? "text-orange-600" : "text-green-600"}>
-                       {daysLeft <= 0 ? "Ready for Market!" : `Ready: ${marketReadyDate}`}
-                     </span>
-                   </div>
-                   <div className="h-4 w-full bg-white rounded-full overflow-hidden border border-huku-tan/50">
-                     <div 
-                       className="h-full bg-huku-orange rounded-full transition-all duration-1000"
-                       style={{ width: `${Math.min(progress, 100)}%` }} 
-                     />
-                   </div>
-                </div>
+                {/* Hide the progress bar if expired */}
+                {!isExpired && (
+                  <div className="mb-6">
+                     <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
+                       <span>Day {Math.floor(progress * 0.42)}</span>
+                       <span className={daysLeft <= 3 ? "text-orange-600" : "text-green-600"}>
+                         {daysLeft <= 0 ? "Ready for Market!" : `Ready: ${marketReadyDate}`}
+                       </span>
+                     </div>
+                     <div className="h-4 w-full bg-white rounded-full overflow-hidden border border-huku-tan/50">
+                       <div 
+                         className="h-full bg-huku-orange rounded-full transition-all duration-1000"
+                         style={{ width: `${Math.min(progress, 100)}%` }} 
+                       />
+                     </div>
+                  </div>
+                )}
 
-                <button 
-                  onClick={() => setSelectedBatch(batch)}
-                  className="w-full bg-white border-2 border-huku-tan text-slate-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-huku-orange hover:text-huku-orange transition"
-                >
-                  Record Sale (birds sold) <TrendingUp size={18} />
-                </button>
+                {/* Actions: Show warning if expired, otherwise show standard Record Sale */}
+                {isExpired ? (
+                  <div className="w-full bg-red-50/50 border border-red-100 text-red-600 py-3 rounded-xl text-sm font-bold flex flex-col items-center justify-center gap-1">
+                    <span>⚠️ Hidden from Marketplace</span>
+                    <span className="text-xs font-medium text-red-400">Batch is over 8 weeks old. Please delete if sold out.</span>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => setSelectedBatch(batch)}
+                    className="w-full bg-white border-2 border-huku-tan text-slate-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-huku-orange hover:text-huku-orange transition"
+                  >
+                    Record Sale (birds sold) <TrendingUp size={18} />
+                  </button>
+                )}
 
               </div>
             );
