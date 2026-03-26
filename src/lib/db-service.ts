@@ -45,6 +45,18 @@ export async function createBatch(batchData: Omit<Batch, "id" | "createdAt">) {
   }
 }
 
+// NEW: Update an existing Batch (Edit)
+export async function updateBatch(batchId: string, updatedData: Partial<Batch>) {
+  try {
+    const batchRef = doc(db, "batches", batchId);
+    await updateDoc(batchRef, updatedData);
+    return true;
+  } catch (error) {
+    console.error("Error updating batch:", error);
+    throw error;
+  }
+}
+
 // 2. Real-time Listener (Producer Dashboard)
 export function subscribeToBatches(userId: string, callback: (data: Batch[]) => void) {
   const q = query(

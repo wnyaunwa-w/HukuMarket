@@ -2,17 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad, getUserProfile, updateBatchStock } from "@/lib/db-service"; // 👈 Added updateBatchStock
+import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad, getUserProfile, updateBatchStock } from "@/lib/db-service";
 import { getGrowthStage } from "@/lib/chickenLogic";
-import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert, ClockAlert, CheckCircle2 } from "lucide-react"; // 👈 Added CheckCircle2
+// 👈 1. Added Edit3 to the icons
+import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert, ClockAlert, CheckCircle2, Edit3 } from "lucide-react"; 
 import Link from "next/link";
 import { RecordSaleModal } from "@/components/RecordSaleModal";
+import { EditBatchModal } from "@/components/EditBatchModal"; // 👈 1. Imported the new modal
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+  
+  // 👈 2. Added state to track which batch is being edited
+  const [editingBatch, setEditingBatch] = useState<Batch | null>(null); 
   
   // 👤 USER PROFILE STATE
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -57,12 +62,10 @@ export default function Dashboard() {
     }
   };
 
-  // 🟢 NEW: 1-Click Sold Out Handler
   const handleMarkSoldOut = async (batch: Batch) => {
     const confirmSoldOut = window.confirm("Mark this entire batch as Sold Out? This will instantly remove it from the marketplace.");
     if (confirmSoldOut && batch.id) {
       try {
-        // Reducing the stock by the current count brings it to exactly 0
         await updateBatchStock(batch.id, batch.count); 
       } catch (error) {
         console.error("Failed to mark sold out", error);
@@ -71,10 +74,9 @@ export default function Dashboard() {
     }
   };
 
-  // Only count birds that are NOT expired AND NOT sold out in the total stats
   const activeBatchesList = batches.filter(b => {
       const { daysLeft } = getGrowthStage(b.hatchDate);
-      return daysLeft >= -14 && b.count > 0; // 👈 Exclude zero-stock from stats
+      return daysLeft >= -14 && b.count > 0; 
   });
   
   const totalBirds = activeBatchesList.reduce((acc, b) => acc + b.count, 0);
@@ -169,19 +171,30 @@ export default function Dashboard() {
             // LOGIC FLAGS
             const isExpired = daysLeft < -14; 
             const isSoldOut = batch.count <= 0;
-            const isHidden = isExpired || isSoldOut; // If either is true, grey out the card
+            const isHidden = isExpired || isSoldOut; 
             
             return (
               <div key={batch.id} className={`border-2 rounded-3xl p-6 relative group transition duration-300 ${
                 isHidden ? "bg-slate-50 border-slate-200 opacity-80" : "bg-huku-light border-huku-tan hover:shadow-lg"
               }`}>
-                <button 
-                  onClick={() => batch.id && handleDelete(batch.id)}
-                  className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
-                  title="Delete Listing"
-                >
-                  <Trash2 size={20} />
-                </button>
+                
+                {/* 👈 3. Replaced solo Trash button with Edit + Trash buttons */}
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <button 
+                    onClick={() => setEditingBatch(batch)}
+                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
+                    title="Edit Listing"
+                  >
+                    <Edit3 size={20} />
+                  </button>
+                  <button 
+                    onClick={() => batch.id && handleDelete(batch.id)}
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                    title="Delete Listing"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
 
                 <div className="flex justify-between items-start mb-6 pr-10">
                   <div>
@@ -216,7 +229,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Hide the progress bar if hidden */}
                 {!isHidden && (
                   <div className="mb-6">
                      <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
@@ -272,6 +284,14 @@ export default function Dashboard() {
         <RecordSaleModal 
           batch={selectedBatch} 
           onClose={() => setSelectedBatch(null)} 
+        />
+      )}
+
+      {/* 👈 4. Added the Edit Modal logic */}
+      {editingBatch && (
+        <EditBatchModal 
+          batch={editingBatch} 
+          onClose={() => setEditingBatch(null)} 
         />
       )}
       
