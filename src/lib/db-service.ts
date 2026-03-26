@@ -359,14 +359,25 @@ export async function toggleUserVerification(userId: string, isVerified: boolean
   }
 }
 
-// 🗑️ DELETE USER
+// 🗑️ DELETE USER & ALL THEIR LISTINGS
 export async function deleteUser(userId: string) {
   try {
-    // 1. Delete User Profile
+    // 1. Find all listings (batches) belonging to this user
+    const batchesQuery = query(collection(db, "batches"), where("userId", "==", userId));
+    const batchesSnapshot = await getDocs(batchesQuery);
+    
+    // 2. Delete every single batch we found
+    const deletePromises = batchesSnapshot.docs.map(batchDoc => 
+      deleteDoc(doc(db, "batches", batchDoc.id))
+    );
+    await Promise.all(deletePromises); // Runs all deletions at the same time
+
+    // 3. Finally, delete the User Profile itself
     await deleteDoc(doc(db, "users", userId));
+    
     return true;
   } catch (error) {
-    console.error("Error deleting user:", error);
+    console.error("Error deleting user and their listings:", error);
     throw error;
   }
 }
