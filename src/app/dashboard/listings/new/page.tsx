@@ -106,7 +106,7 @@ export default function CreateListing() {
                 value={formData.hatchDate}
                 onChange={(e) => setFormData({ ...formData, hatchDate: e.target.value })}
               />
-              <p className="text-xs text-slate-400 mt-1">Date chicks were placed in your coop.</p>
+              <p className="text-xs text-slate-400 mt-1">Date you placed your chicks in the fowl run.</p>
             </div>
           </div>
 
