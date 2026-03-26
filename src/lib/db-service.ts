@@ -456,3 +456,32 @@ export async function toggleAdStatus(adId: string, currentStatus: boolean) {
 export async function deleteAd(adId: string) {
   await deleteDoc(doc(db, "ads", adId));
 }
+// 🧹 ADMIN UTILITY: Clean up orphaned batches (Listings with no matching user)
+export async function cleanUpOrphanedBatches() {
+  try {
+    // 1. Get all active users
+    const usersSnap = await getDocs(collection(db, "users"));
+    const validUserIds = new Set(usersSnap.docs.map(doc => doc.id));
+
+    // 2. Get all batches
+    const batchesSnap = await getDocs(collection(db, "batches"));
+    let deletedCount = 0;
+    const deletePromises: Promise<void>[] = [];
+
+    // 3. Check every batch. If the user doesn't exist, queue it for deletion.
+    batchesSnap.docs.forEach(batchDoc => {
+      const batchData = batchDoc.data();
+      if (!validUserIds.has(batchData.userId)) {
+        deletePromises.push(deleteDoc(doc(db, "batches", batchDoc.id)));
+        deletedCount++;
+      }
+    });
+
+    // 4. Execute all deletions
+    await Promise.all(deletePromises);
+    return deletedCount;
+  } catch (error) {
+    console.error("Cleanup failed:", error);
+    throw error;
+  }
+}

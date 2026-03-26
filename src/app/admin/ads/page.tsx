@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllAds, createAd, deleteAd, toggleAdStatus, Ad, uploadAdAsset } from "@/lib/db-service";
+import { getAllAds, createAd, deleteAd, toggleAdStatus, Ad, uploadAdAsset, cleanUpOrphanedBatches } from "@/lib/db-service"; // 👈 Added cleanUpOrphanedBatches
 import { doc, updateDoc } from "firebase/firestore"; 
 import { db } from "@/lib/firebase"; 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus, Power, ExternalLink, Image as ImageIcon, Loader2, ArrowLeft, Upload, X, Calendar, Edit, Link as LinkIcon, LayoutTemplate } from "lucide-react"; 
+import { Trash2, Plus, Power, ExternalLink, Image as ImageIcon, Loader2, ArrowLeft, Upload, X, Calendar, Edit, Link as LinkIcon, LayoutTemplate, Database } from "lucide-react"; // 👈 Added Database
 import Link from "next/link";
 import Image from "next/image";
 
@@ -28,6 +28,9 @@ export default function AdManager() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string>("");
   const [logoPreview, setLogoPreview] = useState<string>("");
+
+  // 👈 NEW: Database Cleanup State
+  const [cleaning, setCleaning] = useState(false);
 
   // Form State
   const [newAd, setNewAd] = useState({
@@ -152,7 +155,6 @@ export default function AdManager() {
         imageUrl: finalBannerUrl,
         logoUrl: finalLogoUrl,
         link: cleanLink,
-        // 👈 FIX: Save empty string instead of undefined so Firebase doesn't crash
         startDate: newAd.startDate || "",
         endDate: newAd.endDate || ""
       };
@@ -185,6 +187,21 @@ export default function AdManager() {
     loadAds();
   };
 
+  // 👈 NEW: Database Cleanup Handler
+  const handleDatabaseCleanup = async () => {
+    if (confirm("Scan database and delete all orphaned listings (batches without a user)?")) {
+      setCleaning(true);
+      try {
+        const deletedCount = await cleanUpOrphanedBatches();
+        alert(`✅ Cleanup Complete! Removed ${deletedCount} orphaned listings.`);
+      } catch (error) {
+        alert("❌ Failed to clean database. Check console.");
+      } finally {
+        setCleaning(false);
+      }
+    }
+  };
+
   const getAdStatus = (ad: Ad) => {
     if (!ad.active) return { label: "Paused", color: "bg-slate-200 text-slate-500" };
     
@@ -213,14 +230,27 @@ export default function AdManager() {
                <p className="text-slate-500">Manage partner campaigns and revenue.</p>
              </div>
           </div>
-          {!isCreating && (
-          <button 
-            onClick={() => setIsCreating(true)}
-            className="bg-huku-orange text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-orange-600 transition shadow-lg shadow-orange-200"
-          >
-            <Plus size={20} /> New Campaign
-          </button>
-          )}
+          
+          {/* 👈 UPDATED: Added Cleanup Button here */}
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={handleDatabaseCleanup}
+              disabled={cleaning}
+              className="bg-white border-2 border-slate-200 text-slate-600 px-4 py-3 rounded-xl font-bold flex items-center gap-2 hover:border-slate-300 hover:bg-slate-50 transition shadow-sm"
+            >
+              {cleaning ? <Loader2 size={20} className="animate-spin" /> : <Database size={20} />}
+              <span className="hidden sm:inline">Clean DB</span>
+            </button>
+
+            {!isCreating && (
+            <button 
+              onClick={() => setIsCreating(true)}
+              className="bg-huku-orange text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-orange-600 transition shadow-lg shadow-orange-200"
+            >
+              <Plus size={20} /> New Campaign
+            </button>
+            )}
+          </div>
         </div>
 
         {/* 📝 CREATE / EDIT FORM */}
