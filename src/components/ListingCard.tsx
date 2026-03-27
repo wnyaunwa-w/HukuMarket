@@ -84,15 +84,15 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
     cardBgClass = "bg-slate-50 border-slate-200 hover:scale-100 cursor-not-allowed opacity-80";
   } else if (isVerified) {
     if (isDressed) {
-      // 🟢 Verified Dressed Chicken (UPDATED to #ccd5ae)
+      // 🟢 Verified Dressed Chicken (#ccd5ae)
       cardBgClass = "bg-[#ccd5ae] border-[#a3b18a] hover:shadow-xl hover:scale-[1.01] shadow-xl shadow-[#ccd5ae]/40";
     } else {
       // 🟡 Verified Live Broiler (#e9c46a)
       cardBgClass = "bg-[#e9c46a] border-[#cca74a] hover:shadow-xl hover:scale-[1.01] shadow-xl shadow-[#e9c46a]/30";
     }
   } else if (isDressed) {
-    // ⚪ Unverified Dressed Chicken
-    cardBgClass = "bg-blue-50/30 border-blue-100 hover:shadow-xl hover:scale-[1.01]";
+    // ⚪ Unverified Dressed Chicken (UPDATED to #e9edc9)
+    cardBgClass = "bg-[#e9edc9] border-[#c8ccaa] hover:shadow-xl hover:scale-[1.01]";
   }
 
   return (
@@ -151,7 +151,7 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
       {/* MAIN INFO GRID */}
       <div className="flex justify-between items-end mb-6">
         <div>
-          <span className={`text-sm font-bold mb-1 block ${isDressed && !isVerified ? 'text-blue-500' : 'text-slate-600'}`}>
+          <span className={`text-sm font-bold mb-1 block ${isDressed && !isVerified ? 'text-slate-600' : 'text-slate-600'}`}>
             {isDressed ? "❄️ DRESSED CHICKENS" : batch.breed}
           </span>
           <div className="flex items-center gap-2">
@@ -174,7 +174,7 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
           <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${
             isVerified && isDressed ? 'bg-white/60 text-slate-800' 
-            : isDressed ? 'bg-blue-100 text-blue-700' 
+            : isDressed ? 'bg-[#ccd5ae] text-slate-800' 
             : stage === 'Market Ready' ? 'bg-green-100 text-green-700' 
             : 'bg-slate-100/80 text-slate-700'
           }`}>
