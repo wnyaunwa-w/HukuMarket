@@ -23,9 +23,10 @@ import { getGrowthStage } from "@/lib/chickenLogic"; // 👈 1. Imported biologi
 export interface Batch {
   id?: string;
   userId: string;
-  breed: string;
+  listingType?: 'live' | 'dressed'; // 👈 NEW: Tells the database what kind of listing this is
+  breed?: string;
   count: number;
-  hatchDate: string; 
+  hatchDate?: string; 
   location: string;
   pricePerBird: number;
   createdAt: any;
@@ -88,9 +89,14 @@ export async function getAllBatches() {
       // 1. Hide if sold out (count is 0 or less)
       if (batch.count <= 0) return false;
 
-      // 2. Hide if biological clock expired (>14 days past market ready)
-      const { daysLeft } = getGrowthStage(batch.hatchDate);
-      if (daysLeft < -14) return false;
+      // 2. NEW: If it is a dressed bird, it never expires! Show it immediately.
+      if (batch.listingType === 'dressed') return true;
+
+      // 3. For LIVE birds: Hide if biological clock expired (>14 days past market ready)
+      if (batch.hatchDate) {
+        const { daysLeft } = getGrowthStage(batch.hatchDate);
+        if (daysLeft < -14) return false;
+      }
 
       // Otherwise, show it on the market!
       return true; 

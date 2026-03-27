@@ -3,23 +3,26 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBatch } from "@/lib/db-service"; 
 import { useAuth } from "@/context/AuthContext"; 
-import { Loader2 } from "lucide-react";
+import { Loader2, Bird, Snowflake } from "lucide-react"; // 👈 Added Bird and Snowflake icons
 import { BREEDS } from "@/lib/chickenLogic";
-import { SubscriptionGate } from "@/components/SubscriptionGate"; // 👈 Import the Gate
+import { SubscriptionGate } from "@/components/SubscriptionGate"; 
 
 export default function CreateListing() {
   const { currentUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
+  // NEW: Listing Type State
+  const [listingType, setListingType] = useState<'live' | 'dressed'>('live');
+
   // Form State
   const [formData, setFormData] = useState({
     breed: "COBB_500",
-    otherBreed: "", // NEW: For manual entry
+    otherBreed: "", 
     count: 100,
     pricePerBird: 5,
-    city: "Harare",   // NEW: City
-    suburb: "",       // NEW: Suburb
+    city: "Harare",   
+    suburb: "",       
     hatchDate: new Date().toISOString().split("T")[0], 
   });
 
@@ -34,18 +37,18 @@ export default function CreateListing() {
     setLoading(true);
 
     try {
-      // Logic: If they chose "Other", use the manual text. Otherwise use the dropdown value.
       const finalBreed = formData.breed === "OTHER" ? formData.otherBreed : formData.breed;
-      
-      // Logic: Combine City + Suburb into one "Location" string for the card
       const finalLocation = `${formData.city}, ${formData.suburb}`;
 
       await createBatch({
         userId: currentUser.uid,
-        breed: finalBreed,
+        listingType: listingType, // 👈 Tell the DB which type this is
+        // If dressed, save as "DRESSED" to prevent frontend errors. Otherwise use chosen breed.
+        breed: listingType === 'live' ? finalBreed : "DRESSED", 
         count: Number(formData.count),
-        hatchDate: formData.hatchDate,
-        location: finalLocation, // Saves as "Harare, Ruwa"
+        // If dressed, save today's date just as a fallback placeholder
+        hatchDate: listingType === 'live' ? formData.hatchDate : new Date().toISOString().split("T")[0], 
+        location: finalLocation, 
         pricePerBird: Number(formData.pricePerBird),
       });
 
@@ -67,48 +70,82 @@ export default function CreateListing() {
 
         <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
           
-          {/* Row 1: Breed & Placement Date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Breed</label>
-              <select
-                className="w-full p-3 border rounded-lg bg-slate-50 outline-none focus:ring-2 ring-orange-100"
-                value={formData.breed}
-                onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
+          {/* 👈 THE NEW LISTING TYPE TOGGLE */}
+          <div className="mb-6 border-b border-slate-100 pb-8">
+            <label className="block text-sm font-bold text-slate-700 mb-3">What are you selling?</label>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setListingType('live')}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                  listingType === 'live' 
+                  ? 'border-orange-500 bg-orange-50 text-orange-600' 
+                  : 'border-slate-100 bg-slate-50 text-slate-400 hover:border-slate-200'
+                }`}
               >
-                {Object.entries(BREEDS).map(([key, info]) => (
-                  <option key={key} value={key}>{info.name}</option>
-                ))}
-                <option value="OTHER">Other (Specify below)</option>
-              </select>
+                <Bird size={28} className="mb-2" />
+                <span className="font-bold">Live Broilers</span>
+              </button>
               
-              {/* Show this input ONLY if "Other" is selected */}
-              {formData.breed === "OTHER" && (
-                <input
-                  type="text"
-                  placeholder="Type breed name..."
-                  required
-                  className="w-full p-3 mt-2 border rounded-lg bg-white outline-none focus:ring-2 ring-orange-100 animate-in fade-in slide-in-from-top-1"
-                  value={formData.otherBreed}
-                  onChange={(e) => setFormData({ ...formData, otherBreed: e.target.value })}
-                />
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                Placement Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                required
-                className="w-full p-3 border rounded-lg outline-none focus:ring-2 ring-orange-100"
-                value={formData.hatchDate}
-                onChange={(e) => setFormData({ ...formData, hatchDate: e.target.value })}
-              />
-              <p className="text-xs text-slate-400 mt-1">Date you placed your chicks in the fowl run.</p>
+              <button
+                type="button"
+                onClick={() => setListingType('dressed')}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                  listingType === 'dressed' 
+                  ? 'border-blue-500 bg-blue-50 text-blue-600' 
+                  : 'border-slate-100 bg-slate-50 text-slate-400 hover:border-slate-200'
+                }`}
+              >
+                <Snowflake size={28} className="mb-2" />
+                <span className="font-bold">Dressed / Frozen</span>
+              </button>
             </div>
           </div>
+
+          {/* Row 1: Breed & Placement Date (ONLY SHOW FOR LIVE BIRDS) */}
+          {listingType === 'live' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Breed</label>
+                <select
+                  className="w-full p-3 border rounded-lg bg-slate-50 outline-none focus:ring-2 ring-orange-100"
+                  value={formData.breed}
+                  onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
+                >
+                  {Object.entries(BREEDS).map(([key, info]) => (
+                    <option key={key} value={key}>{info.name}</option>
+                  ))}
+                  <option value="OTHER">Other (Specify below)</option>
+                </select>
+                
+                {/* Show this input ONLY if "Other" is selected */}
+                {formData.breed === "OTHER" && (
+                  <input
+                    type="text"
+                    placeholder="Type breed name..."
+                    required
+                    className="w-full p-3 mt-2 border rounded-lg bg-white outline-none focus:ring-2 ring-orange-100 animate-in fade-in slide-in-from-top-1"
+                    value={formData.otherBreed}
+                    onChange={(e) => setFormData({ ...formData, otherBreed: e.target.value })}
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  Placement Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  className="w-full p-3 border rounded-lg outline-none focus:ring-2 ring-orange-100"
+                  value={formData.hatchDate}
+                  onChange={(e) => setFormData({ ...formData, hatchDate: e.target.value })}
+                />
+                <p className="text-xs text-slate-400 mt-1">Date you placed your chicks in the fowl run.</p>
+              </div>
+            </div>
+          )}
 
           {/* Row 2: Price & Quantity */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -154,18 +191,20 @@ export default function CreateListing() {
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* Submit Button (Dynamically changes color based on type!) */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-lg transition flex items-center justify-center text-lg shadow-lg"
+            className={`w-full text-white font-bold py-4 rounded-lg transition flex items-center justify-center text-lg shadow-lg ${
+              listingType === 'dressed' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : 'bg-orange-600 hover:bg-orange-700 shadow-orange-200'
+            }`}
           >
             {loading ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="animate-spin" /> Saving...
               </span>
             ) : (
-              "Create Listing"
+               listingType === 'dressed' ? "Create Dressed Listing" : "Create Live Listing"
             )}
           </button>
 
