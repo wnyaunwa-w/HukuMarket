@@ -84,22 +84,16 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
     cardBgClass = "bg-slate-50 border-slate-200 hover:scale-100 cursor-not-allowed opacity-80";
   } else if (isVerified) {
     if (isDressed) {
-      // 🔵 Verified Dressed Chicken (#219ebc)
-      cardBgClass = "bg-[#219ebc] border-[#126b82] hover:shadow-xl hover:scale-[1.01] shadow-xl shadow-[#219ebc]/20";
+      // 🟢 Verified Dressed Chicken (UPDATED to #ccd5ae)
+      cardBgClass = "bg-[#ccd5ae] border-[#a3b18a] hover:shadow-xl hover:scale-[1.01] shadow-xl shadow-[#ccd5ae]/40";
     } else {
-      // 🟡 Verified Live Broiler (UPDATED to #e9c46a)
-      cardBgClass = "bg-[#e9c46a] border-[#cca74a] hover:shadow-xl hover:scale-[1.01] shadow-xl shadow-[#e9c46a]/20";
+      // 🟡 Verified Live Broiler (#e9c46a)
+      cardBgClass = "bg-[#e9c46a] border-[#cca74a] hover:shadow-xl hover:scale-[1.01] shadow-xl shadow-[#e9c46a]/30";
     }
   } else if (isDressed) {
     // ⚪ Unverified Dressed Chicken
     cardBgClass = "bg-blue-50/30 border-blue-100 hover:shadow-xl hover:scale-[1.01]";
   }
-
-  // ✍️ DYNAMIC TEXT COLORS
-  const isDarkBg = isVerified && isDressed; 
-  const textPrimary = isDarkBg ? "text-white" : "text-slate-900";
-  const textSecondary = isDarkBg ? "text-blue-50" : "text-slate-500";
-  const textTertiary = isDarkBg ? "text-blue-200" : "text-slate-400";
 
   return (
     <div 
@@ -120,13 +114,11 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
       <button 
         onClick={handleToggleFavorite}
         disabled={isSoldOut}
-        className={`absolute top-5 right-5 z-20 p-2 rounded-full transition shadow-sm border ${
-          isDarkBg ? "bg-white/10 border-white/20 hover:bg-white/20" : "bg-white border-slate-200 hover:bg-orange-50"
-        }`}
+        className="absolute top-5 right-5 z-20 p-2 rounded-full transition shadow-sm border bg-white border-slate-200 hover:bg-orange-50"
       >
         <Heart 
           size={20} 
-          className={`transition-colors duration-300 ${isFavorite ? "fill-red-500 text-red-500" : (isDarkBg ? "text-white hover:text-red-300" : "text-slate-400 hover:text-red-400")}`}
+          className={`transition-colors duration-300 ${isFavorite ? "fill-red-500 text-red-500" : "text-slate-400 hover:text-red-400"}`}
         />
       </button>
 
@@ -143,15 +135,15 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         </div>
         
         <div>
-          <h4 className={`font-bold ${textPrimary} text-[15px] leading-tight flex items-center gap-1`}>
+          <h4 className="font-bold text-slate-900 text-[15px] leading-tight flex items-center gap-1">
             {farmerName} 
             <FarmerBadge userId={batch.userId} />
           </h4>
           
           <div className="flex items-center gap-1 text-sm mt-0.5">
             <Star size={14} className="text-yellow-400 fill-yellow-400" />
-            <span className={`font-bold ${isDarkBg ? 'text-white' : 'text-slate-700'}`}>{rating ? rating.toFixed(1) : "New"}</span>
-            {rating && <span className={`${textTertiary} text-xs`}>Rating</span>}
+            <span className="font-bold text-slate-700">{rating ? rating.toFixed(1) : "New"}</span>
+            {rating && <span className="text-slate-400 text-xs">Rating</span>}
           </div>
         </div>
       </div>
@@ -159,14 +151,14 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
       {/* MAIN INFO GRID */}
       <div className="flex justify-between items-end mb-6">
         <div>
-          <span className={`text-sm font-bold mb-1 block ${isDarkBg ? 'text-blue-100' : isDressed ? 'text-blue-500' : 'text-slate-500'}`}>
+          <span className={`text-sm font-bold mb-1 block ${isDressed && !isVerified ? 'text-blue-500' : 'text-slate-600'}`}>
             {isDressed ? "❄️ DRESSED CHICKENS" : batch.breed}
           </span>
           <div className="flex items-center gap-2">
             <span className="text-3xl leading-none">{isDressed ? "🍗" : "🐔"}</span>
-            <span className={`text-4xl font-black ${textPrimary} tracking-tight`}>{batch.count}</span>
+            <span className="text-4xl font-black text-slate-900 tracking-tight">{batch.count}</span>
           </div>
-          <span className={`text-sm font-bold ${textSecondary} ml-11`}>
+          <span className="text-sm font-bold text-slate-500 ml-11">
             {isDressed ? "birds ready" : "birds available"}
           </span>
         </div>
@@ -179,9 +171,9 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
 
       {/* 🟢 PROGRESS BAR */}
       <div className="mb-6">
-        <div className={`flex justify-between text-xs font-bold ${textSecondary} mb-2`}>
+        <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
           <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${
-            isDressed && isDarkBg ? 'bg-white/20 text-white' 
+            isVerified && isDressed ? 'bg-white/60 text-slate-800' 
             : isDressed ? 'bg-blue-100 text-blue-700' 
             : stage === 'Market Ready' ? 'bg-green-100 text-green-700' 
             : 'bg-slate-100/80 text-slate-700'
@@ -199,10 +191,8 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
       </div>
 
       {/* 📍 LOCATION */}
-      <div className={`flex items-start gap-2 text-sm mb-6 p-3 rounded-xl border shadow-sm ${
-        isDarkBg ? "bg-white/10 border-white/20 text-blue-50" : "bg-white/60 border-slate-200/50 text-slate-700"
-      }`}>
-        <MapPin size={18} className={`shrink-0 mt-0.5 ${isDarkBg ? "text-blue-200" : "text-slate-400"}`} />
+      <div className="flex items-start gap-2 text-sm mb-6 p-3 rounded-xl border shadow-sm bg-white/60 border-slate-200/50 text-slate-700">
+        <MapPin size={18} className="shrink-0 mt-0.5 text-slate-400" />
         <span className="font-medium leading-snug line-clamp-2">{batch.location}</span>
       </div>
 
