@@ -3,13 +3,17 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getUserProfile } from "@/lib/db-service";
+import { collection, query, where, getDocs } from "firebase/firestore"; 
+import { db } from "@/lib/firebase";
 import { Loader2, Lock, Sparkles, CheckCircle2 } from "lucide-react";
-import Link from "next/link";
 
 export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  
+  // Admin Phone State for the Paywall
+  const [adminPhone, setAdminPhone] = useState("+263 77 123 4567");
 
   useEffect(() => {
     async function checkAccess() {
@@ -19,6 +23,14 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
       }
 
       try {
+        // 🚨 CRITICAL FIX: THE SUPER ADMIN BYPASS 🚨
+        // If it is you, skip all checks and instantly open the gate!
+        if (currentUser.email === "wnyaunwa@gmail.com") {
+          setHasAccess(true);
+          setLoading(false);
+          return; 
+        }
+
         const profile = await getUserProfile(currentUser.uid);
 
         // 1. ⏱️ Calculate the 90-Day "Pioneer" Trial
@@ -40,6 +52,21 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
         // 3. 🚪 Grant access if EITHER the trial is active OR they are subscribed
         if (isTrialActive || isSubscribed) {
           setHasAccess(true);
+        } else {
+          // 4. If locked out, fetch the Super Admin phone for the payment instructions
+          try {
+            const adminQuery = query(collection(db, "users"), where("email", "==", "wnyaunwa@gmail.com"));
+            const adminSnap = await getDocs(adminQuery);
+            if (!adminSnap.empty) {
+              const adminData = adminSnap.docs[0].data();
+              const fetchedPhone = adminData.phoneNumber || adminData.phone;
+              if (fetchedPhone) {
+                setAdminPhone(fetchedPhone);
+              }
+            }
+          } catch (phoneErr) {
+            console.error("Could not fetch admin phone number", phoneErr);
+          }
         }
 
       } catch (error) {
@@ -52,6 +79,14 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
     checkAccess();
   }, [currentUser]);
 
+  // 📱 PREPARE THE WHATSAPP LINK DYNAMICALLY FOR THE PAYWALL
+  let cleanAdminPhone = adminPhone.replace(/[\s\+\-\(\)]/g, "");
+  if (cleanAdminPhone.startsWith("0")) {
+    cleanAdminPhone = "263" + cleanAdminPhone.substring(1);
+  }
+  const waMessage = encodeURIComponent(`Hello, I want to activate my HukuMarket monthly subscription. My email is ${currentUser?.email}. Here is my $5 proof of payment:`);
+  const whatsappLink = `https://wa.me/${cleanAdminPhone}?text=${waMessage}`;
+
   // LOADING STATE
   if (loading) {
     return (
@@ -62,60 +97,67 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // ✅ ACCESS GRANTED: Render the protected page (like Create Listing)
+  // ✅ ACCESS GRANTED: Render the protected page
   if (hasAccess) {
     return <>{children}</>;
   }
 
-  // 🛑 ACCESS DENIED: Show the Paywall
+  // 🛑 ACCESS DENIED: Show the New Paywall UI
   return (
-    <div className="max-w-lg mx-auto py-20 px-4">
-      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl text-center">
-        <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+    <div className="max-w-lg mx-auto py-16 px-4">
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xl text-center">
+        <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
           <Lock size={32} className="text-huku-orange" />
         </div>
         
-        <h2 className="text-2xl font-black text-slate-900 mb-2">Time to Upgrade! 🚀</h2>
-        <p className="text-slate-500 mb-8 leading-relaxed">
-          Your 90-day Pioneer Promo has successfully completed! To continue listing your chickens and reaching buyers across your province, please activate your monthly subscription.
+        <h2 className="text-2xl font-black text-slate-900 mb-2">Activate Your Seller Account</h2>
+        <p className="text-slate-500 mb-8 leading-relaxed text-sm">
+          Your 90-day Pioneer Promo has completed. To continue selling your birds on HukuMarket, you need an active subscription.
         </p>
 
-        <div className="bg-slate-50 p-6 rounded-2xl mb-8 text-left border border-slate-100">
-          <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Sparkles size={18} className="text-huku-orange" /> Subscription Benefits
-          </h3>
-          <ul className="space-y-3">
-            <li className="flex items-start gap-2 text-sm text-slate-600">
-              <CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" />
-              <span>Unlimited live & dressed broiler listings</span>
+        {/* The "Monthly Producer Plan" Card */}
+        <div className="bg-white border-2 border-slate-100 rounded-2xl p-6 text-left mb-8 shadow-sm">
+          <h3 className="text-lg font-black text-center text-slate-900 mb-4">Monthly Producer Plan</h3>
+          
+          <div className="text-center mb-6">
+            <span className="text-4xl font-black text-huku-orange">$5</span>
+            <span className="text-slate-500 font-medium"> / month</span>
+          </div>
+
+          <ul className="space-y-3 mb-6">
+            <li className="flex items-start gap-2 text-sm text-slate-700">
+              <CheckCircle2 size={18} className="text-green-500 shrink-0" />
+              <span className="font-medium">Unlimited live & dressed listings</span>
             </li>
-            <li className="flex items-start gap-2 text-sm text-slate-600">
-              <CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" />
-              <span>Direct WhatsApp inquiries from local buyers</span>
+            <li className="flex items-start gap-2 text-sm text-slate-700">
+              <CheckCircle2 size={18} className="text-green-500 shrink-0" />
+              <span className="font-medium">Direct WhatsApp inquiries</span>
             </li>
-            <li className="flex items-start gap-2 text-sm text-slate-600">
-              <CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" />
-              <span>Marketplace analytics and sales tracking</span>
+            <li className="flex items-start gap-2 text-sm text-slate-700">
+              <CheckCircle2 size={18} className="text-green-500 shrink-0" />
+              <span className="font-medium">Dashboard sales tracking</span>
             </li>
           </ul>
+
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm">
+            <p className="font-bold text-slate-700 mb-1">How to renew:</p>
+            <ol className="text-slate-600 space-y-1 list-decimal list-inside">
+              <li>Send $5 via Innbucks or EcoCash to: <strong className="text-slate-900 block mt-1">{adminPhone}</strong></li>
+              <li className="mt-2">Send proof of payment to WhatsApp below.</li>
+              <li>We will reactivate your account immediately.</li>
+            </ol>
+          </div>
         </div>
 
-        <div className="mb-8">
-          <span className="text-4xl font-black text-slate-900">$5</span>
-          <span className="text-slate-500 font-medium"> / month</span>
-        </div>
-
-        {/* This button will link to a billing page where they can see InnBucks/EcoCash details */}
-        <Link 
-          href="/dashboard/billing" 
-          className="block w-full bg-huku-orange text-white font-bold py-4 rounded-xl hover:bg-orange-600 transition shadow-lg shadow-orange-200"
+        {/* WhatsApp Action Button */}
+        <a 
+          href={whatsappLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full bg-green-500 text-white font-bold py-4 rounded-xl hover:bg-green-600 transition shadow-lg shadow-green-200"
         >
-          Activate My Account
-        </Link>
-        
-        <p className="text-xs text-slate-400 mt-4">
-          Payments securely processed via EcoCash or InnBucks.
-        </p>
+          Send Proof of Payment
+        </a>
       </div>
     </div>
   );
