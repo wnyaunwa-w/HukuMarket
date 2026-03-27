@@ -57,7 +57,7 @@ function MarketContent() {
 
   const filteredBatches = batches.filter(batch => 
     batch.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    batch.breed.toLowerCase().includes(searchTerm.toLowerCase())
+    (batch.breed || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const faqs = [
