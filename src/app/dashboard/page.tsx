@@ -4,11 +4,10 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad, getUserProfile, updateBatchStock } from "@/lib/db-service";
 import { getGrowthStage } from "@/lib/chickenLogic";
-// 👈 1. Added Edit3 to the icons
 import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert, ClockAlert, CheckCircle2, Edit3 } from "lucide-react"; 
 import Link from "next/link";
 import { RecordSaleModal } from "@/components/RecordSaleModal";
-import { EditBatchModal } from "@/components/EditBatchModal"; // 👈 1. Imported the new modal
+import { EditBatchModal } from "@/components/EditBatchModal"; 
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -16,13 +15,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   
-  // 👈 2. Added state to track which batch is being edited
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null); 
   
-  // 👤 USER PROFILE STATE
   const [userProfile, setUserProfile] = useState<any>(null);
-  
-  // 📢 AD STATE
   const [currentAd, setCurrentAd] = useState<Ad | null>(null);
 
   useEffect(() => {
@@ -74,8 +69,10 @@ export default function Dashboard() {
     }
   };
 
+  // 👈 FIX 1: Added fallback date and prevented dressed birds from expiring
   const activeBatchesList = batches.filter(b => {
-      const { daysLeft } = getGrowthStage(b.hatchDate);
+      if (b.listingType === 'dressed') return b.count > 0;
+      const { daysLeft } = getGrowthStage(b.hatchDate || new Date().toISOString());
       return daysLeft >= -14 && b.count > 0; 
   });
   
@@ -166,10 +163,14 @@ export default function Dashboard() {
           </div>
         ) : (
           batches.map((batch) => {
-            const { stage, progress, daysLeft, marketReadyDate } = getGrowthStage(batch.hatchDate);
+            const isDressed = batch.listingType === 'dressed';
+
+            // 👈 FIX 2: Added the fallback date here as well
+            let { stage, progress, daysLeft, marketReadyDate } = getGrowthStage(batch.hatchDate || new Date().toISOString());
             
-            // LOGIC FLAGS
-            const isExpired = daysLeft < -14; 
+            if (isDressed) progress = 100;
+
+            const isExpired = !isDressed && daysLeft < -14; 
             const isSoldOut = batch.count <= 0;
             const isHidden = isExpired || isSoldOut; 
             
@@ -178,7 +179,6 @@ export default function Dashboard() {
                 isHidden ? "bg-slate-50 border-slate-200 opacity-80" : "bg-huku-light border-huku-tan hover:shadow-lg"
               }`}>
                 
-                {/* 👈 3. Replaced solo Trash button with Edit + Trash buttons */}
                 <div className="absolute top-4 right-4 flex gap-2">
                   <button 
                     onClick={() => setEditingBatch(batch)}
@@ -200,7 +200,7 @@ export default function Dashboard() {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className={`text-xl font-black ${isHidden ? "text-slate-500 line-through" : "text-slate-900"}`}>
-                        {batch.breed}
+                        {isDressed ? "❄️ DRESSED CHICKENS" : batch.breed}
                       </h3>
                       
                       {!isHidden && userProfile?.isVerified && (
@@ -217,14 +217,14 @@ export default function Dashboard() {
                           <ClockAlert size={12} /> Auto-Archived
                         </span>
                       ) : (
-                        <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1">
-                          {stage}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1 ${isDressed ? 'bg-blue-100 text-blue-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {isDressed ? "❄️ DRESSED & READY" : stage}
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-slate-500">
                       <span>📍 {batch.location}</span>
-                      <span className={isSoldOut ? "text-green-600 font-bold" : ""}>👤 {batch.count} Birds</span>
+                      <span className={isSoldOut ? "text-green-600 font-bold" : ""}>{isDressed ? "🍗" : "👤"} {batch.count} Birds</span>
                     </div>
                   </div>
                 </div>
@@ -232,14 +232,14 @@ export default function Dashboard() {
                 {!isHidden && (
                   <div className="mb-6">
                      <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
-                       <span>Day {Math.floor(progress * 0.42)}</span>
-                       <span className={daysLeft <= 3 ? "text-orange-600" : "text-green-600"}>
-                         {daysLeft <= 0 ? "Ready for Market!" : `Ready: ${marketReadyDate}`}
+                       <span>{isDressed ? "Ready Now" : `Day ${Math.floor(progress * 0.42)}`}</span>
+                       <span className={isDressed || daysLeft <= 3 ? "text-green-600" : "text-orange-600"}>
+                         {isDressed ? "Ready for Market!" : (daysLeft <= 0 ? "Ready for Market!" : `Ready: ${marketReadyDate}`)}
                        </span>
                      </div>
                      <div className="h-4 w-full bg-white rounded-full overflow-hidden border border-huku-tan/50">
                        <div 
-                         className="h-full bg-huku-orange rounded-full transition-all duration-1000"
+                         className={`h-full rounded-full transition-all duration-1000 ${isDressed ? "bg-green-500" : "bg-huku-orange"}`}
                          style={{ width: `${Math.min(progress, 100)}%` }} 
                        />
                      </div>
@@ -287,7 +287,6 @@ export default function Dashboard() {
         />
       )}
 
-      {/* 👈 4. Added the Edit Modal logic */}
       {editingBatch && (
         <EditBatchModal 
           batch={editingBatch} 
