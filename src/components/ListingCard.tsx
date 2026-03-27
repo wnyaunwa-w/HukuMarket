@@ -35,7 +35,6 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
   const [farmerPhoto, setFarmerPhoto] = useState<string | null>(null);
   const [rating, setRating] = useState<number | null>(null);
   
-  // 👈 NEW: State to hold the farmer's verification status
   const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
@@ -50,7 +49,6 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         if (profile) {
           setFarmerName(profile.displayName || "Farmer");
           setFarmerPhoto(profile.photoURL);
-          // 👈 NEW: Grab the verified status from the database
           setIsVerified(profile.isVerified || false); 
         }
 
@@ -89,15 +87,15 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
       // 🔵 Verified Dressed Chicken (#219ebc)
       cardBgClass = "bg-[#219ebc] border-[#126b82] hover:shadow-xl hover:scale-[1.01] shadow-xl shadow-[#219ebc]/20";
     } else {
-      // 🟡 Verified Live Broiler (#ffb703)
-      cardBgClass = "bg-[#ffb703] border-[#fb8500] hover:shadow-xl hover:scale-[1.01] shadow-xl shadow-[#ffb703]/20";
+      // 🟡 Verified Live Broiler (UPDATED to #e9c46a)
+      cardBgClass = "bg-[#e9c46a] border-[#cca74a] hover:shadow-xl hover:scale-[1.01] shadow-xl shadow-[#e9c46a]/20";
     }
   } else if (isDressed) {
-    // ⚪ Unverified Dressed Chicken (Keep original subtle blue)
+    // ⚪ Unverified Dressed Chicken
     cardBgClass = "bg-blue-50/30 border-blue-100 hover:shadow-xl hover:scale-[1.01]";
   }
 
-  // ✍️ DYNAMIC TEXT COLORS (To ensure text is readable on the dark #219ebc blue)
+  // ✍️ DYNAMIC TEXT COLORS
   const isDarkBg = isVerified && isDressed; 
   const textPrimary = isDarkBg ? "text-white" : "text-slate-900";
   const textSecondary = isDarkBg ? "text-blue-50" : "text-slate-500";
