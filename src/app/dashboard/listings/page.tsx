@@ -49,7 +49,15 @@ export default function MyListingsPage() {
           </div>
         ) : (
           batches.map((batch) => {
-            const { stage, progress, daysLeft, marketReadyDate } = getGrowthStage(batch.hatchDate);
+            const isDressed = batch.listingType === 'dressed';
+            
+            // 👈 FIX: Added the fallback date to satisfy TypeScript
+            let { stage, progress, daysLeft, marketReadyDate } = getGrowthStage(batch.hatchDate || new Date().toISOString());
+            
+            // 👈 UPGRADE: Override math for dressed birds
+            if (isDressed) {
+              progress = 100;
+            }
             
             return (
               <div key={batch.id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition relative group">
@@ -65,8 +73,8 @@ export default function MyListingsPage() {
 
                 <div className="flex flex-col md:flex-row gap-6">
                   {/* Status Column */}
-                  <div className="shrink-0 flex flex-col items-center justify-center bg-slate-50 rounded-xl w-24 h-24 border border-slate-100">
-                    <span className="text-3xl">🐔</span>
+                  <div className={`shrink-0 flex flex-col items-center justify-center rounded-xl w-24 h-24 border ${isDressed ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
+                    <span className="text-3xl">{isDressed ? "🍗" : "🐔"}</span>
                     <span className="font-black text-slate-900 text-lg">{batch.count}</span>
                     <span className="text-[10px] text-slate-400 uppercase font-bold">Birds</span>
                   </div>
@@ -74,9 +82,15 @@ export default function MyListingsPage() {
                   {/* Info Column */}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-lg text-slate-900">{batch.breed}</h3>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${daysLeft <= 0 ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-600'}`}>
-                        {stage}
+                      <h3 className={`font-bold text-lg ${isDressed ? "text-blue-600" : "text-slate-900"}`}>
+                        {isDressed ? "❄️ DRESSED CHICKENS" : batch.breed}
+                      </h3>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                        isDressed ? 'bg-blue-100 text-blue-700' :
+                        daysLeft <= 0 ? 'bg-green-100 text-green-700' : 
+                        'bg-slate-100 text-slate-600'
+                      }`}>
+                        {isDressed ? "❄️ DRESSED & READY" : stage}
                       </span>
                     </div>
                     
@@ -85,16 +99,16 @@ export default function MyListingsPage() {
                         <MapPin size={14} /> {batch.location}
                       </div>
                       <div className="flex items-center gap-1">
-                        <Calendar size={14} /> Ready: <span className="text-slate-700 font-medium">{marketReadyDate}</span>
+                        <Calendar size={14} /> Ready: <span className="text-slate-700 font-medium">{isDressed ? "Now" : marketReadyDate}</span>
                       </div>
                     </div>
 
                     {/* Progress Bar */}
                     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${progress}%` }}></div>
+                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${Math.min(progress, 100)}%` }}></div>
                     </div>
                     <p className="text-xs text-slate-400 text-right">
-                      {daysLeft > 0 ? `${daysLeft} days to maturity` : "Market Ready"}
+                      {isDressed ? "Ready Now" : (daysLeft > 0 ? `${daysLeft} days to maturity` : "Market Ready")}
                     </p>
                   </div>
                 </div>
