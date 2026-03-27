@@ -62,7 +62,8 @@ export default function VerifyBadgePage() {
   if (cleanAdminPhone.startsWith("0")) {
     cleanAdminPhone = "263" + cleanAdminPhone.substring(1);
   }
-  const waMessage = encodeURIComponent(`Hello, I have submitted my KYC details for the Verified Badge. My email is ${currentUser?.email}. Here is my $5 proof of payment:`);
+  // 👈 UPDATED TO $10
+  const waMessage = encodeURIComponent(`Hello, I have submitted my KYC details for the Verified Badge. My email is ${currentUser?.email}. Here is my $10 proof of payment:`);
   const whatsappLink = `https://wa.me/${cleanAdminPhone}?text=${waMessage}`;
 
 
@@ -124,8 +125,9 @@ export default function VerifyBadgePage() {
         
         <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-6">
           <h4 className="font-bold text-slate-900 mb-2">Final Step: Send Payment Proof</h4>
+          {/* 👈 UPDATED TO $10 */}
           <p className="text-sm text-slate-600 mb-4">
-            We can only process your verification after receiving your <strong>$5 Annual Fee</strong> payment proof.
+            We can only process your verification after receiving your <strong>$10 Annual Fee</strong> payment proof.
           </p>
           
           <a 
@@ -163,8 +165,9 @@ export default function VerifyBadgePage() {
         <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
           <BadgeCheck className="text-blue-500" /> Apply for Verification
         </h1>
+        {/* 👈 UPDATED TO $10 */}
         <p className="text-slate-500 mt-2">
-          Earn the blue Verified Badge to build trust with buyers. Verification requires an identity check and a $5 annual fee.
+          Earn the blue Verified Badge to build trust with buyers. Verification requires an identity check and a $10 annual fee.
         </p>
       </div>
 
@@ -233,8 +236,9 @@ export default function VerifyBadgePage() {
 
         <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
           <h4 className="font-bold text-slate-900 mb-2">Payment Required</h4>
+          {/* 👈 UPDATED TO $10 */}
           <p className="text-sm text-slate-600 mb-3">
-            To complete your application, please send the <strong>$5 Annual Fee</strong> via Innbucks or EcoCash to: <strong className="text-slate-900">{adminPhone}</strong>
+            To complete your application, please send the <strong>$10 Annual Fee</strong> via Innbucks or EcoCash to: <strong className="text-slate-900">{adminPhone}</strong>
           </p>
           <p className="text-xs text-slate-500">
             Clicking the button below will save your details. If WhatsApp doesn't open automatically, a button will appear on the next screen.
@@ -246,7 +250,8 @@ export default function VerifyBadgePage() {
           disabled={submitting}
           className="w-full bg-slate-900 hover:bg-slate-800 text-white p-4 rounded-2xl font-black text-lg shadow-lg shadow-slate-200 transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
         >
-          {submitting ? <Loader2 className="animate-spin" /> : "Submit & Pay $5"}
+          {/* 👈 UPDATED TO $10 */}
+          {submitting ? <Loader2 className="animate-spin" /> : "Submit & Pay $10"}
         </button>
 
       </form>

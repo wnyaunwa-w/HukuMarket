@@ -1,167 +1,122 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { ShieldCheck, AlertTriangle, Clock } from "lucide-react"; 
-import { getSubscriptionFee } from "@/lib/db-service";
-import { differenceInDays, parseISO, format } from "date-fns"; 
-import { usePathname } from "next/navigation"; 
+import { getUserProfile } from "@/lib/db-service";
+import { Loader2, Lock, Sparkles, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 
 export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
-  const pathname = usePathname(); 
-  const [status, setStatus] = useState<any>(null);
-  const [role, setRole] = useState<any>(null);
-  const [expiryDate, setExpiryDate] = useState<string | null>(null);
-  const [fee, setFee] = useState(5);
   const [loading, setLoading] = useState(true);
-  
-  const [adminPhone, setAdminPhone] = useState("+263 77 123 4567"); 
+  const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
-    async function checkSubscription() {
-      if (currentUser) {
-        // 1. Fetch User Status & Expiry
-        const userSnap = await getDoc(doc(db, "users", currentUser.uid));
-        if (userSnap.exists()) {
-          const data = userSnap.data();
-          setStatus(data.subscriptionStatus);
-          setRole(data.role);
-          setExpiryDate(data.subscriptionExpiryDate || null);
-        }
-        
-        // 2. Fetch Global Fee
-        const currentFee = await getSubscriptionFee();
-        setFee(currentFee);
-
-        // 3. Fetch Super Admin's Phone Number dynamically
-        try {
-          const adminQuery = query(collection(db, "users"), where("email", "==", "wnyaunwa@gmail.com"));
-          const adminSnap = await getDocs(adminQuery);
-          if (!adminSnap.empty) {
-            const adminData = adminSnap.docs[0].data();
-            const phone = adminData.phoneNumber || adminData.phone;
-            if (phone) {
-              setAdminPhone(phone);
-            }
-          }
-        } catch (error) {
-          console.error("Could not fetch admin phone number", error);
-        }
+    async function checkAccess() {
+      if (!currentUser) {
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      try {
+        const profile = await getUserProfile(currentUser.uid);
+
+        // 1. ⏱️ Calculate the 90-Day "Pioneer" Trial
+        const creationTime = currentUser.metadata?.creationTime;
+        let isTrialActive = false;
+
+        if (creationTime) {
+          const signupDate = new Date(creationTime);
+          const now = new Date();
+          const diffTime = now.getTime() - signupDate.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          
+          isTrialActive = diffDays <= 90;
+        }
+
+        // 2. 💳 Check if they have an active paid subscription
+        const isSubscribed = profile?.subscriptionStatus === "active";
+
+        // 3. 🚪 Grant access if EITHER the trial is active OR they are subscribed
+        if (isTrialActive || isSubscribed) {
+          setHasAccess(true);
+        }
+
+      } catch (error) {
+        console.error("Error checking subscription:", error);
+      } finally {
+        setLoading(false);
+      }
     }
-    checkSubscription();
+
+    checkAccess();
   }, [currentUser]);
 
-  if (loading) return null;
-
-  // --- CALCULATION LOGIC ---
-  const today = new Date();
-  let daysLeft = null;
-  let isExpired = false;
-
-  if (expiryDate) {
-    const end = parseISO(expiryDate);
-    daysLeft = differenceInDays(end, today);
-    if (daysLeft < 0) isExpired = true;
-  }
-
-  // --- 🔒 BULLETPROOF BLOCKING LOGIC ---
-  const isTryingToSell = pathname?.startsWith('/dashboard/listings');
-  
-  // 1. Are they a buyer trying to sneak into the seller pages?
-  const isBuyerTryingToSell = role === 'buyer' && isTryingToSell;
-  
-  // 2. Are they a farmer who hasn't paid or expired?
-  const isUnpaidFarmer = role === 'farmer' && (status !== 'active' || isExpired);
-
-  // Block if either condition is true
-  const shouldBlock = isBuyerTryingToSell || isUnpaidFarmer;
-
-  if (shouldBlock) {
-    let cleanAdminPhone = adminPhone.replace(/[\s\+\-\(\)]/g, "");
-    if (cleanAdminPhone.startsWith("0")) {
-      cleanAdminPhone = "263" + cleanAdminPhone.substring(1);
-    }
-
-    // Smart WhatsApp message based on their exact situation
-    let waMessage = "I want to activate my seller account";
-    if (isExpired) waMessage = "My subscription expired";
-    if (role === 'buyer') waMessage = "I am a buyer but I want to upgrade to a seller account";
-
+  // LOADING STATE
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 animate-in fade-in zoom-in duration-300">
-        <div className={`p-6 rounded-full mb-6 ${isExpired ? "bg-red-100" : "bg-orange-100"}`}>
-          {isExpired ? (
-            <Clock size={48} className="text-red-600" />
-          ) : (
-            <ShieldCheck size={48} className="text-huku-orange" />
-          )}
-        </div>
-        
-        <h2 className="text-3xl font-black text-slate-900 mb-2">
-          {isExpired ? "Subscription Expired" : "Activate Your Seller Account"}
-        </h2>
-        
-        <p className="text-slate-500 max-w-md mb-8">
-          {isExpired 
-            ? "Your monthly subscription period has ended. Please renew to continue managing your listings." 
-            : "To start selling your birds on HukuMarket, you need an active subscription."}
-        </p>
-        
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-sm w-full mb-6">
-          <h3 className="font-bold text-lg">Monthly Producer Plan</h3>
-          <div className="text-4xl font-black text-huku-orange my-4">
-            {fee === 0 ? "FREE" : `$${fee}`} 
-            {fee > 0 && <span className="text-sm text-slate-400 font-medium">/month</span>}
-          </div>
-          
-          <ul className="text-sm text-slate-600 text-left space-y-2 mb-4">
-            <li>✅ Unlimited Listings</li>
-            <li>✅ Buyer Notifications</li>
-          </ul>
-          
-          {fee > 0 && (
-             <div className="bg-slate-50 p-3 rounded-lg text-xs text-slate-500 text-left">
-              <strong>How to activate:</strong><br/>
-              1. Send ${fee} via Innbucks or EcoCash to: <strong>{adminPhone}</strong><br/>
-              2. Send proof of payment to WhatsApp below.<br/>
-              3. We will activate your account immediately.
-            </div>
-          )}
-        </div>
-
-        <a 
-          href={`https://wa.me/${cleanAdminPhone}?text=${waMessage}%20(Email:%20${currentUser?.email}).%20Here%20is%20my%20proof%20of%20payment.`} 
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-green-500 text-white px-8 py-3 rounded-full font-bold hover:bg-green-600 transition shadow-lg shadow-green-200"
-        >
-          {fee === 0 ? "Contact Admin to Activate" : "Send Proof of Payment"}
-        </a>
+      <div className="flex flex-col items-center justify-center py-20 min-h-[50vh]">
+        <Loader2 className="animate-spin text-huku-orange mb-4" size={32} />
+        <p className="text-slate-500 font-medium">Loading secure dashboard...</p>
       </div>
     );
   }
 
-  // --- ⚠️ WARNING LOGIC (3 Days Left) ---
-  return (
-    <>
-      {!shouldBlock && daysLeft !== null && daysLeft <= 3 && daysLeft >= 0 && role === 'farmer' && (
-        <div className="bg-orange-50 border-l-4 border-orange-500 p-4 mb-6 rounded-r-lg flex items-start gap-3">
-          <AlertTriangle className="text-orange-500 shrink-0 mt-0.5" size={20} />
-          <div>
-            <h4 className="font-bold text-orange-800 text-sm">Subscription Expiring Soon</h4>
-            <p className="text-orange-700 text-xs mt-1">
-              Your plan expires in <span className="font-black">{daysLeft === 0 ? "less than 24 hours" : `${daysLeft} days`}</span> ({expiryDate && format(parseISO(expiryDate), "d MMM")}). 
-              Please renew to avoid interruption.
-            </p>
-          </div>
-        </div>
-      )}
+  // ✅ ACCESS GRANTED: Render the protected page (like Create Listing)
+  if (hasAccess) {
+    return <>{children}</>;
+  }
 
-      {children}
-    </>
+  // 🛑 ACCESS DENIED: Show the Paywall
+  return (
+    <div className="max-w-lg mx-auto py-20 px-4">
+      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl text-center">
+        <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+          <Lock size={32} className="text-huku-orange" />
+        </div>
+        
+        <h2 className="text-2xl font-black text-slate-900 mb-2">Time to Upgrade! 🚀</h2>
+        <p className="text-slate-500 mb-8 leading-relaxed">
+          Your 90-day Pioneer Promo has successfully completed! To continue listing your chickens and reaching buyers across your province, please activate your monthly subscription.
+        </p>
+
+        <div className="bg-slate-50 p-6 rounded-2xl mb-8 text-left border border-slate-100">
+          <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <Sparkles size={18} className="text-huku-orange" /> Subscription Benefits
+          </h3>
+          <ul className="space-y-3">
+            <li className="flex items-start gap-2 text-sm text-slate-600">
+              <CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" />
+              <span>Unlimited live & dressed broiler listings</span>
+            </li>
+            <li className="flex items-start gap-2 text-sm text-slate-600">
+              <CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" />
+              <span>Direct WhatsApp inquiries from local buyers</span>
+            </li>
+            <li className="flex items-start gap-2 text-sm text-slate-600">
+              <CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" />
+              <span>Marketplace analytics and sales tracking</span>
+            </li>
+          </ul>
+        </div>
+
+        <div className="mb-8">
+          <span className="text-4xl font-black text-slate-900">$5</span>
+          <span className="text-slate-500 font-medium"> / month</span>
+        </div>
+
+        {/* This button will link to a billing page where they can see InnBucks/EcoCash details */}
+        <Link 
+          href="/dashboard/billing" 
+          className="block w-full bg-huku-orange text-white font-bold py-4 rounded-xl hover:bg-orange-600 transition shadow-lg shadow-orange-200"
+        >
+          Activate My Account
+        </Link>
+        
+        <p className="text-xs text-slate-400 mt-4">
+          Payments securely processed via EcoCash or InnBucks.
+        </p>
+      </div>
+    </div>
   );
 }
