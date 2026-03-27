@@ -5,11 +5,11 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getFavoriteBatches, Batch } from "@/lib/db-service";
 import { getGrowthStage } from "@/lib/chickenLogic";
-import { useRouter } from "next/navigation"; // 👈 Import router
+import { useRouter } from "next/navigation"; 
 
 export function NotificationBell() {
   const { currentUser } = useAuth();
-  const router = useRouter(); // 👈 Initialize router
+  const router = useRouter(); 
   const [alerts, setAlerts] = useState<Batch[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -21,8 +21,11 @@ export function NotificationBell() {
       
       // 🔔 THE LOGIC: Filter for batches ready in 7 days or less
       const urgent = favorites.filter(batch => {
-        const { daysLeft } = getGrowthStage(batch.hatchDate);
-        // Alert if it is ready within 7 days OR already ready (but not ancient history)
+        // Fallback date added here (already fixed!)
+        const { daysLeft } = getGrowthStage(batch.hatchDate || new Date().toISOString());
+        
+        // If it's a dressed bird, it's always ready. Otherwise, check the 7-day window.
+        if (batch.listingType === 'dressed') return true;
         return daysLeft <= 7 && daysLeft > -30; 
       });
 
@@ -82,24 +85,34 @@ export function NotificationBell() {
               </div>
             ) : (
               alerts.map((batch) => {
-                 const { daysLeft } = getGrowthStage(batch.hatchDate);
+                 const isDressed = batch.listingType === 'dressed';
+                 // 👈 THE FIX: Added the fallback date to the render mapping
+                 let { daysLeft } = getGrowthStage(batch.hatchDate || new Date().toISOString());
+                 
                  return (
                    <div 
                      key={batch.id} 
-                     onClick={() => handleNotificationClick(batch.id)} // 👈 Added Click Handler
+                     onClick={() => handleNotificationClick(batch.id)} 
                      className="p-4 border-b border-slate-50 hover:bg-orange-50 transition-colors cursor-pointer group relative"
                    >
-                     <div className="flex justify-between items-start mb-1">
-                       <h5 className="font-bold text-slate-800 text-sm line-clamp-1">{batch.breed}</h5>
-                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${daysLeft <= 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                         {daysLeft <= 0 ? "READY!" : `${daysLeft} days left`}
+                     <div className="flex justify-between items-start mb-1 gap-2">
+                       {/* 👈 UI UPGRADE: Dynamic title for dressed birds */}
+                       <h5 className={`font-bold text-sm line-clamp-1 ${isDressed ? "text-blue-600" : "text-slate-800"}`}>
+                         {isDressed ? "❄️ DRESSED CHICKENS" : batch.breed}
+                       </h5>
+                       
+                       {/* 👈 UI UPGRADE: Dynamic pill for dressed birds */}
+                       <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                         isDressed ? "bg-blue-100 text-blue-700" : 
+                         daysLeft <= 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
+                       }`}>
+                         {isDressed ? "READY NOW!" : (daysLeft <= 0 ? "READY!" : `${daysLeft} days left`)}
                        </span>
                      </div>
                      <p className="text-xs text-slate-500 line-clamp-1">
                        Located in <span className="font-medium text-slate-700">{batch.location}</span>
                      </p>
                      
-                     {/* Hover Prompt */}
                      <p className="text-[10px] text-huku-orange font-bold mt-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                        View Listing →
                      </p>
