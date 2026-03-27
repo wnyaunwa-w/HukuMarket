@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, Fragment } from "react"; // 👈 Added Fragment
+import { useEffect, useState, Suspense, Fragment } from "react"; 
 import { Navbar } from "@/components/Navbar";
 import { getAllBatches, Batch, getActiveAds, Ad } from "@/lib/db-service"; 
 import { ListingCard } from "@/components/ListingCard";
@@ -80,6 +80,11 @@ function MarketContent() {
     {
       question: "Do you offer delivery services?",
       answer: "HukuMarket itself does not offer transport. However, many farmers on our platform are willing to deliver for a fee. Check the specific listing description or ask the farmer when you call."
+    },
+    // 👈 NEW FAQ ADDED HERE
+    {
+      question: "Do you have a mobile app? How do I install it?",
+      answer: "Yes! You can install HukuMarket directly to your phone without taking up storage space. On Android (using Chrome), tap the 3 dots in the top right corner and select 'Install App' or 'Add to Home Screen'. On iPhone (using Safari), tap the Share button at the bottom and select 'Add to Home Screen'."
     }
   ];
 
@@ -148,7 +153,6 @@ function MarketContent() {
               const adToShow = isAdSpot && feedAds.length > 0 ? feedAds[adIndex % feedAds.length] : null;
 
               return (
-                // 👈 FIX: Changed from a <div> wrapper to a <Fragment> so the Ad gets its own grid slot
                 <Fragment key={`wrapper-${batch.id}`}>
                   {/* The Listing */}
                   <ListingCard batch={batch} onContact={(b) => setSelectedBatch(b)} />
