@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad, getUserProfile, updateBatchStock } from "@/lib/db-service";
 import { getGrowthStage } from "@/lib/chickenLogic";
-import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert, ClockAlert, CheckCircle2, Edit3 } from "lucide-react"; 
+import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert, ClockAlert, CheckCircle2, Edit3, Sparkles } from "lucide-react"; 
 import Link from "next/link";
 import { RecordSaleModal } from "@/components/RecordSaleModal";
 import { EditBatchModal } from "@/components/EditBatchModal"; 
@@ -20,6 +20,10 @@ export default function Dashboard() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [currentAd, setCurrentAd] = useState<Ad | null>(null);
 
+  // 👈 TRIAL CALCULATION STATE
+  const [daysLeftInTrial, setDaysLeftInTrial] = useState(0);
+  const [isTrialActive, setIsTrialActive] = useState(false);
+
   useEffect(() => {
     if (currentUser) {
       const unsubscribe = subscribeToBatches(currentUser.uid, (data) => {
@@ -30,6 +34,19 @@ export default function Dashboard() {
       getUserProfile(currentUser.uid).then((profile) => {
         setUserProfile(profile);
       });
+
+      // 👈 CALCULATE THE 90-DAY PROMO
+      const creationTime = currentUser?.metadata?.creationTime;
+      if (creationTime) {
+        const signupDate = new Date(creationTime);
+        const now = new Date();
+        const diffTime = now.getTime() - signupDate.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const remaining = 90 - diffDays;
+        
+        setDaysLeftInTrial(remaining);
+        setIsTrialActive(remaining > 0 && remaining <= 90);
+      }
 
       return () => unsubscribe();
     }
@@ -69,7 +86,6 @@ export default function Dashboard() {
     }
   };
 
-  // 👈 FIX 1: Added fallback date and prevented dressed birds from expiring
   const activeBatchesList = batches.filter(b => {
       if (b.listingType === 'dressed') return b.count > 0;
       const { daysLeft } = getGrowthStage(b.hatchDate || new Date().toISOString());
@@ -85,7 +101,7 @@ export default function Dashboard() {
     <div className="max-w-4xl mx-auto pb-20">
       
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-black text-slate-900 flex items-center gap-2">
             Dashboard
@@ -111,6 +127,26 @@ export default function Dashboard() {
            </Link>
         )}
       </div>
+
+      {/* 🚀 THE LAUNCH SPECIAL BANNER */}
+      {isTrialActive && userProfile?.subscriptionStatus !== 'active' && (
+        <div className="bg-gradient-to-r from-orange-500 to-huku-orange p-6 rounded-3xl text-white mb-8 shadow-lg shadow-orange-200 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <span className="bg-white/20 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest mb-2 inline-flex items-center gap-1">
+              <Sparkles size={12} /> Launch Special
+            </span>
+            <h3 className="text-xl font-black mb-1">Pioneer Promo Active!</h3>
+            <p className="text-orange-50 font-medium text-sm md:text-base flex flex-wrap items-center gap-1.5">
+              Monthly Subscription: <span className="line-through opacity-70 ml-1 decoration-2">$5.00</span> <span className="font-black text-white text-lg">$0.00</span> 
+              <span className="ml-1 md:ml-2 bg-white/10 px-2 py-1 rounded-lg text-xs border border-white/20">(Your first 3 months are on us!)</span>
+            </p>
+          </div>
+          <div className="shrink-0 text-center bg-white/10 px-5 py-3 rounded-2xl border border-white/20 shadow-inner w-full md:w-auto">
+             <span className="block text-3xl font-black drop-shadow-sm">{daysLeftInTrial}</span>
+             <span className="text-[10px] uppercase tracking-widest font-bold opacity-90">Days Left</span>
+          </div>
+        </div>
+      )}
 
       {/* STATS */}
       <div className="grid grid-cols-2 gap-4 mb-8">
@@ -164,8 +200,6 @@ export default function Dashboard() {
         ) : (
           batches.map((batch) => {
             const isDressed = batch.listingType === 'dressed';
-
-            // 👈 FIX 2: Added the fallback date here as well
             let { stage, progress, daysLeft, marketReadyDate } = getGrowthStage(batch.hatchDate || new Date().toISOString());
             
             if (isDressed) progress = 100;
@@ -207,7 +241,6 @@ export default function Dashboard() {
                         <BadgeCheck size={18} className="text-blue-500 fill-blue-100" />
                       )}
 
-                      {/* Dynamic Status Badges */}
                       {isSoldOut ? (
                         <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1 flex items-center gap-1">
                           <CheckCircle2 size={12} /> Sold Out
@@ -246,7 +279,6 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* DYNAMIC ACTIONS */}
                 {isSoldOut ? (
                   <div className="w-full bg-green-50/50 border border-green-200 text-green-700 py-3 rounded-xl text-sm font-bold flex flex-col items-center justify-center gap-1">
                     <span>🎉 Batch Sold Out</span>
