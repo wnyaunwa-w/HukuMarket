@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getAllUsers, toggleUserVerification, deleteUser } from "@/lib/db-service";
-import { doc, updateDoc } from "firebase/firestore"; // 👈 Added Firestore updates
-import { db } from "@/lib/firebase"; // 👈 Added db
+import { doc, updateDoc } from "firebase/firestore"; 
+import { db } from "@/lib/firebase"; 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowLeft, BadgeCheck, Search, ShieldAlert, Trash2, Mail, Clock, Eye, X, CheckCircle2, XCircle } from "lucide-react";
@@ -235,14 +235,15 @@ export default function UserManager() {
         </div>
 
         {/* 📋 USERS TABLE */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-          <table className="w-full text-left">
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 w-full overflow-x-auto">
+          <table className="w-full text-left min-w-[500px] md:min-w-full">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                <th className="p-4 text-xs font-bold text-slate-400 uppercase">User</th>
-                <th className="p-4 text-xs font-bold text-slate-400 uppercase">Contact</th>
-                <th className="p-4 text-xs font-bold text-slate-400 uppercase">Verification Status</th>
-                <th className="p-4 text-xs font-bold text-slate-400 uppercase text-right">Actions</th>
+                <th className="p-3 md:p-4 text-xs font-bold text-slate-400 uppercase">User</th>
+                {/* Contact Header hidden on mobile */}
+                <th className="p-3 md:p-4 text-xs font-bold text-slate-400 uppercase hidden md:table-cell">Contact</th>
+                <th className="p-3 md:p-4 text-xs font-bold text-slate-400 uppercase">Status</th>
+                <th className="p-3 md:p-4 text-xs font-bold text-slate-400 uppercase text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -253,64 +254,72 @@ export default function UserManager() {
                   <tr key={user.id} className={`transition ${isPending ? 'bg-orange-50/50' : 'hover:bg-slate-50/50'}`}>
                     
                     {/* User Info */}
-                    <td className="p-4">
+                    <td className="p-3 md:p-4 max-w-[140px] sm:max-w-[200px] md:max-w-none">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold overflow-hidden border border-slate-200">
+                        <div className="h-10 w-10 shrink-0 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold overflow-hidden border border-slate-200">
                           {user.photoURL ? (
                             <img src={user.photoURL} className="w-full h-full object-cover" />
                           ) : (
                             user.displayName?.[0] || "?"
                           )}
                         </div>
-                        <div>
-                          <p className="font-bold text-slate-900 flex items-center gap-1">
-                            {user.displayName || "Unknown Name"}
-                            {user.isVerified && <BadgeCheck size={14} className="text-blue-500" fill="currentColor" />}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-slate-900 flex items-center gap-1 truncate">
+                            <span className="truncate">{user.displayName || "Unknown Name"}</span>
+                            {user.isVerified && <BadgeCheck size={14} className="text-blue-500 shrink-0" fill="currentColor" />}
                           </p>
                           <p className="text-xs text-slate-400 capitalize">{user.role}</p>
+                          {/* Email - MOBILE ONLY */}
+                          <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1 md:hidden truncate">
+                            <Mail size={12} className="shrink-0" />
+                            <span className="truncate">{user.email}</span>
+                          </p>
                         </div>
                       </div>
                     </td>
 
-                    {/* Contact */}
-                    <td className="p-4">
+                    {/* Contact - DESKTOP ONLY */}
+                    <td className="p-3 md:p-4 hidden md:table-cell">
                       <div className="flex flex-col gap-1 text-sm text-slate-600">
-                        <span className="flex items-center gap-2"><Mail size={14} className="text-slate-400" /> {user.email}</span>
+                        <span className="flex items-center gap-2 truncate max-w-[200px] lg:max-w-[250px]">
+                          <Mail size={14} className="text-slate-400 shrink-0" /> 
+                          <span className="truncate">{user.email}</span>
+                        </span>
                       </div>
                     </td>
 
                     {/* Status / Review Button */}
-                    <td className="p-4">
+                    <td className="p-3 md:p-4">
                       {isPending ? (
                         <button 
                           onClick={() => setReviewUser(user)}
-                          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold bg-huku-orange text-white hover:bg-orange-600 shadow-sm transition animate-pulse"
+                          className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold bg-huku-orange text-white hover:bg-orange-600 shadow-sm transition animate-pulse whitespace-nowrap"
                         >
-                          <Eye size={16} /> Review KYC
+                          <Eye size={16} /> <span className="hidden sm:inline">Review KYC</span><span className="sm:hidden">Review</span>
                         </button>
                       ) : (
                         <button 
                           onClick={() => handleToggleVerify(user.id, user.isVerified)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold transition-all border whitespace-nowrap ${
                             user.isVerified 
                             ? "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100" 
                             : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
                           }`}
                         >
                           {user.isVerified ? (
-                            <> <BadgeCheck size={14} /> Verified </>
+                            <> <BadgeCheck size={14} className="shrink-0"/> Verified </>
                           ) : (
-                            <> <ShieldAlert size={14} /> Unverified </>
+                            <> <ShieldAlert size={14} className="shrink-0"/> Unverified </>
                           )}
                         </button>
                       )}
                     </td>
 
                     {/* Actions */}
-                    <td className="p-4 text-right">
+                    <td className="p-3 md:p-4 text-right">
                       <button 
                         onClick={() => handleDelete(user.id)}
-                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition shrink-0"
                         title="Delete User"
                       >
                         <Trash2 size={16} />
