@@ -2,7 +2,6 @@
 
 import { Batch } from "@/lib/db-service";
 import { MapPin, ArrowRight, Heart, Star } from "lucide-react";
-import { getGrowthStage } from "@/lib/chickenLogic";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { 
@@ -20,12 +19,6 @@ interface ListingCardProps {
 
 export function ListingCard({ batch, onContact }: ListingCardProps) {
   const isDressed = batch.listingType === 'dressed';
-
-  let { stage, progress, daysLeft } = getGrowthStage(batch.hatchDate || new Date().toISOString());
-  if (isDressed) {
-    progress = 100; 
-  }
-
   const isSoldOut = batch.count <= 0;
   
   const { currentUser } = useAuth();
@@ -34,7 +27,6 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
   const [farmerName, setFarmerName] = useState("Farmer");
   const [farmerPhoto, setFarmerPhoto] = useState<string | null>(null);
   const [rating, setRating] = useState<number | null>(null);
-  
   const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
@@ -77,21 +69,17 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
     }
   };
 
-  // 🎨 DYNAMIC BACKGROUND LOGIC
-  let cardBgClass = "bg-huku-light border-huku-tan hover:shadow-xl hover:scale-[1.01]"; // Default Unverified Live
+  let cardBgClass = "bg-huku-light border-huku-tan hover:shadow-xl hover:scale-[1.01]"; 
   
   if (isSoldOut) {
     cardBgClass = "bg-slate-50 border-slate-200 hover:scale-100 cursor-not-allowed opacity-80";
   } else if (isVerified) {
     if (isDressed) {
-      // 🟢 Verified Dressed Chicken (#ccd5ae)
       cardBgClass = "bg-[#ccd5ae] border-[#a3b18a] hover:shadow-xl hover:scale-[1.01] shadow-xl shadow-[#ccd5ae]/40";
     } else {
-      // 🟡 Verified Live Broiler (#e9c46a)
       cardBgClass = "bg-[#e9c46a] border-[#cca74a] hover:shadow-xl hover:scale-[1.01] shadow-xl shadow-[#e9c46a]/30";
     }
   } else if (isDressed) {
-    // ⚪ Unverified Dressed Chicken (UPDATED to #e9edc9)
     cardBgClass = "bg-[#e9edc9] border-[#c8ccaa] hover:shadow-xl hover:scale-[1.01]";
   }
 
@@ -101,7 +89,6 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
       className={`relative border-2 rounded-3xl p-5 transition-all duration-300 group overflow-hidden ${cardBgClass}`}
     >
       
-      {/* 🚫 SOLD OUT OVERLAY */}
       {isSoldOut && (
         <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none p-6">
           <div className="border-4 border-red-700 text-red-700 font-black text-3xl uppercase p-3 -rotate-12 rounded-xl tracking-widest bg-white/20 backdrop-blur-[2px] shadow-sm">
@@ -110,7 +97,6 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         </div>
       )}
 
-      {/* ❤️ HEART ICON */}
       <button 
         onClick={handleToggleFavorite}
         disabled={isSoldOut}
@@ -122,7 +108,6 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         />
       </button>
 
-      {/* 👤 FARMER PROFILE HEADER */}
       <div className="flex items-center gap-3 mb-6 pr-10">
         <div className="h-12 w-12 rounded-full bg-slate-100 border-2 border-white shadow-sm overflow-hidden relative shrink-0">
           {farmerPhoto ? (
@@ -148,7 +133,6 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         </div>
       </div>
 
-      {/* MAIN INFO GRID */}
       <div className="flex justify-between items-end mb-6">
         <div>
           <span className={`text-sm font-bold mb-1 block ${isDressed && !isVerified ? 'text-slate-600' : 'text-slate-600'}`}>
@@ -169,34 +153,31 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         </div>
       </div>
 
-      {/* 🟢 PROGRESS BAR */}
+      {/* 🟢 HARDCODED PROGRESS BAR */}
       <div className="mb-6">
         <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
           <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${
             isVerified && isDressed ? 'bg-white/60 text-slate-800' 
             : isDressed ? 'bg-[#ccd5ae] text-slate-800' 
-            : stage === 'Market Ready' ? 'bg-green-100 text-green-700' 
-            : 'bg-slate-100/80 text-slate-700'
+            : 'bg-green-100 text-green-700' 
           }`}>
-            {isDressed ? "❄️ DRESSED & READY" : stage}
+            {isDressed ? "❄️ DRESSED & READY" : "MARKET READY"}
           </span>
-          <span>{isDressed ? "Ready Now" : (daysLeft <= 0 ? "Ready Now" : `${daysLeft} days left`)}</span>
+          <span>Ready Now</span>
         </div>
         <div className="h-3 w-full bg-black/5 rounded-full overflow-hidden border border-black/5">
           <div 
-            className="h-full rounded-full transition-all duration-1000 bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]"
-            style={{ width: `${Math.min(progress, 100)}%` }} 
+            className="h-full rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]"
+            style={{ width: `100%` }} 
           />
         </div>
       </div>
 
-      {/* 📍 LOCATION */}
       <div className="flex items-start gap-2 text-sm mb-6 p-3 rounded-xl border shadow-sm bg-white/60 border-slate-200/50 text-slate-700">
         <MapPin size={18} className="shrink-0 mt-0.5 text-slate-400" />
         <span className="font-medium leading-snug line-clamp-2">{batch.location}</span>
       </div>
 
-      {/* ACTION BUTTON */}
       <button 
         onClick={() => onContact(batch)}
         disabled={isSoldOut}
