@@ -16,14 +16,13 @@ import {
   deleteDoc 
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { getGrowthStage } from "@/lib/chickenLogic"; // 👈 1. Imported biological clock logic
 
 // --- BATCH LOGIC ---
 
 export interface Batch {
   id?: string;
   userId: string;
-  listingType?: 'live' | 'dressed'; // 👈 NEW: Tells the database what kind of listing this is
+  listingType?: 'live' | 'dressed';
   breed?: string;
   count: number;
   hatchDate?: string; 
@@ -46,7 +45,7 @@ export async function createBatch(batchData: Omit<Batch, "id" | "createdAt">) {
   }
 }
 
-// NEW: Update an existing Batch (Edit)
+// Update an existing Batch (Edit)
 export async function updateBatch(batchId: string, updatedData: Partial<Batch>) {
   try {
     const batchRef = doc(db, "batches", batchId);
@@ -84,23 +83,8 @@ export async function getAllBatches() {
     const snapshot = await getDocs(q);
     const allBatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Batch[];
 
-    // 👈 2. THE BIOLOGICAL CLOCK & ZERO-STOCK FILTER
-    return allBatches.filter(batch => {
-      // 1. Hide if sold out (count is 0 or less)
-      if (batch.count <= 0) return false;
-
-      // 2. NEW: If it is a dressed bird, it never expires! Show it immediately.
-      if (batch.listingType === 'dressed') return true;
-
-      // 3. For LIVE birds: Hide if biological clock expired (>14 days past market ready)
-      if (batch.hatchDate) {
-        const { daysLeft } = getGrowthStage(batch.hatchDate);
-        if (daysLeft < -14) return false;
-      }
-
-      // Otherwise, show it on the market!
-      return true; 
-    });
+    // 👈 2. ZERO-STOCK FILTER ONLY (No more biological clock / 14-day expiry!)
+    return allBatches.filter(batch => batch.count > 0);
 
   } catch (error) {
     console.error("Error fetching market:", error);
@@ -462,6 +446,7 @@ export async function toggleAdStatus(adId: string, currentStatus: boolean) {
 export async function deleteAd(adId: string) {
   await deleteDoc(doc(db, "ads", adId));
 }
+
 // 🧹 ADMIN UTILITY: Clean up orphaned batches (Listings with no matching user)
 export async function cleanUpOrphanedBatches() {
   try {

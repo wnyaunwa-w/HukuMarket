@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeToBatches, Batch, deleteBatch, getActiveAds, Ad, getUserProfile, updateBatchStock } from "@/lib/db-service";
-import { getGrowthStage } from "@/lib/chickenLogic";
-import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert, ClockAlert, CheckCircle2, Edit3, Sparkles } from "lucide-react"; 
+import { Loader2, PlusCircle, TrendingUp, Trash2, BadgeCheck, ShieldAlert, CheckCircle2, Edit3, Sparkles } from "lucide-react"; 
 import Link from "next/link";
 import { RecordSaleModal } from "@/components/RecordSaleModal";
 import { EditBatchModal } from "@/components/EditBatchModal"; 
@@ -20,7 +19,6 @@ export default function Dashboard() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [currentAd, setCurrentAd] = useState<Ad | null>(null);
 
-  // 👈 TRIAL CALCULATION STATE
   const [daysLeftInTrial, setDaysLeftInTrial] = useState(0);
   const [isTrialActive, setIsTrialActive] = useState(false);
 
@@ -35,7 +33,6 @@ export default function Dashboard() {
         setUserProfile(profile);
       });
 
-      // 👈 CALCULATE THE 90-DAY PROMO
       const creationTime = currentUser?.metadata?.creationTime;
       if (creationTime) {
         const signupDate = new Date(creationTime);
@@ -86,11 +83,8 @@ export default function Dashboard() {
     }
   };
 
-  const activeBatchesList = batches.filter(b => {
-      if (b.listingType === 'dressed') return b.count > 0;
-      const { daysLeft } = getGrowthStage(b.hatchDate || new Date().toISOString());
-      return daysLeft >= -14 && b.count > 0; 
-  });
+  // 👈 CLEANUP: We now just count any batch with birds in it! No expiration filter.
+  const activeBatchesList = batches.filter(b => b.count > 0);
   
   const totalBirds = activeBatchesList.reduce((acc, b) => acc + b.count, 0);
   const activeBatches = activeBatchesList.length;
@@ -200,17 +194,11 @@ export default function Dashboard() {
         ) : (
           batches.map((batch) => {
             const isDressed = batch.listingType === 'dressed';
-            let { stage, progress, daysLeft, marketReadyDate } = getGrowthStage(batch.hatchDate || new Date().toISOString());
-            
-            if (isDressed) progress = 100;
-
-            const isExpired = !isDressed && daysLeft < -14; 
             const isSoldOut = batch.count <= 0;
-            const isHidden = isExpired || isSoldOut; 
             
             return (
               <div key={batch.id} className={`border-2 rounded-3xl p-6 relative group transition duration-300 ${
-                isHidden ? "bg-slate-50 border-slate-200 opacity-80" : "bg-huku-light border-huku-tan hover:shadow-lg"
+                isSoldOut ? "bg-slate-50 border-slate-200 opacity-80" : "bg-huku-light border-huku-tan hover:shadow-lg"
               }`}>
                 
                 <div className="absolute top-4 right-4 flex gap-2">
@@ -233,11 +221,11 @@ export default function Dashboard() {
                 <div className="flex justify-between items-start mb-6 pr-10">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className={`text-xl font-black ${isHidden ? "text-slate-500 line-through" : "text-slate-900"}`}>
+                      <h3 className={`text-xl font-black ${isSoldOut ? "text-slate-500 line-through" : "text-slate-900"}`}>
                         {isDressed ? "❄️ DRESSED CHICKENS" : batch.breed}
                       </h3>
                       
-                      {!isHidden && userProfile?.isVerified && (
+                      {!isSoldOut && userProfile?.isVerified && (
                         <BadgeCheck size={18} className="text-blue-500 fill-blue-100" />
                       )}
 
@@ -245,13 +233,9 @@ export default function Dashboard() {
                         <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1 flex items-center gap-1">
                           <CheckCircle2 size={12} /> Sold Out
                         </span>
-                      ) : isExpired ? (
-                        <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1 flex items-center gap-1">
-                          <ClockAlert size={12} /> Auto-Archived
-                        </span>
                       ) : (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1 ${isDressed ? 'bg-blue-100 text-blue-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {isDressed ? "❄️ DRESSED & READY" : stage}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-1 ${isDressed ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                          {isDressed ? "❄️ DRESSED & READY" : "MARKET READY"}
                         </span>
                       )}
                     </div>
@@ -262,18 +246,16 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {!isHidden && (
+                {!isSoldOut && (
                   <div className="mb-6">
                      <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
-                       <span>{isDressed ? "Ready Now" : `Day ${Math.floor(progress * 0.42)}`}</span>
-                       <span className={isDressed || daysLeft <= 3 ? "text-green-600" : "text-orange-600"}>
-                         {isDressed ? "Ready for Market!" : (daysLeft <= 0 ? "Ready for Market!" : `Ready: ${marketReadyDate}`)}
-                       </span>
+                       <span>Ready Now</span>
+                       <span className="text-green-600">Ready for Market!</span>
                      </div>
                      <div className="h-4 w-full bg-white rounded-full overflow-hidden border border-huku-tan/50">
                        <div 
-                         className={`h-full rounded-full transition-all duration-1000 ${isDressed ? "bg-green-500" : "bg-huku-orange"}`}
-                         style={{ width: `${Math.min(progress, 100)}%` }} 
+                         className="h-full rounded-full transition-all duration-1000 bg-green-500"
+                         style={{ width: `100%` }} 
                        />
                      </div>
                   </div>
@@ -283,11 +265,6 @@ export default function Dashboard() {
                   <div className="w-full bg-green-50/50 border border-green-200 text-green-700 py-3 rounded-xl text-sm font-bold flex flex-col items-center justify-center gap-1">
                     <span>🎉 Batch Sold Out</span>
                     <span className="text-xs font-medium text-green-600">This listing is no longer on the marketplace.</span>
-                  </div>
-                ) : isExpired ? (
-                  <div className="w-full bg-red-50/50 border border-red-100 text-red-600 py-3 rounded-xl text-sm font-bold flex flex-col items-center justify-center gap-1">
-                    <span>⚠️ Hidden from Marketplace</span>
-                    <span className="text-xs font-medium text-red-400">Batch is over 8 weeks old. Please delete or mark as sold out.</span>
                   </div>
                 ) : (
                   <div className="flex gap-3">
