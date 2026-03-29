@@ -86,8 +86,23 @@ export async function getAllBatches() {
     const snapshot = await getDocs(q);
     const allBatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Batch[];
 
-    // ZERO-STOCK FILTER ONLY
-    return allBatches.filter(batch => batch.count > 0);
+    const now = new Date();
+    const EXPIRY_DAYS = 31; // 👈 Listings automatically vanish from the market after 31 days
+
+    // THE DOUBLE FILTER (Zero-Stock & Ghost Listings)
+    return allBatches.filter(batch => {
+      // Rule 1: Hide if stock is 0
+      if (batch.count <= 0) return false;
+
+      // Rule 2: Hide if it's a Ghost Listing (older than 31 days)
+      if (batch.createdAt?.toDate) {
+        const createdDate = batch.createdAt.toDate();
+        const diffDays = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+        if (diffDays > EXPIRY_DAYS) return false;
+      }
+
+      return true; // Keep it on the public market!
+    });
 
   } catch (error) {
     console.error("Error fetching market:", error);
