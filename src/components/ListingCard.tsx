@@ -1,7 +1,7 @@
 "use client";
 
 import { Batch } from "@/lib/db-service";
-import { MapPin, ArrowRight, Heart, Star } from "lucide-react";
+import { MapPin, ArrowRight, Heart, Star, Loader2 } from "lucide-react"; // 👈 Added Loader2
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { 
@@ -9,7 +9,7 @@ import {
   getFavoriteIds, 
   getUserProfile, 
   getFarmerReviews,
-  trackBuyerInquiry // 👈 Added the tracking function here!
+  trackBuyerInquiry 
 } from "@/lib/db-service";
 import { FarmerBadge } from "@/components/FarmerBadge"; 
 
@@ -24,6 +24,9 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
   
   const { currentUser } = useAuth();
   const [isFavorite, setIsFavorite] = useState(false);
+  
+  // 👈 NEW: State to show a loading spinner while it contacts Firebase
+  const [isContacting, setIsContacting] = useState(false);
   
   const [farmerName, setFarmerName] = useState("Farmer");
   const [farmerPhoto, setFarmerPhoto] = useState<string | null>(null);
@@ -154,7 +157,6 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         </div>
       </div>
 
-      {/* 🟢 HARDCODED PROGRESS BAR */}
       <div className="mb-6">
         <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
           <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${
@@ -179,23 +181,32 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         <span className="font-medium leading-snug line-clamp-2">{batch.location}</span>
       </div>
 
-      {/* 👈 ACTION BUTTON WITH INQUIRY TRACKING INJECTED */}
+      {/* 👈 UPDATED ACTION BUTTON WITH ASYNC/AWAIT */}
       <button 
-        onClick={() => {
+        onClick={async () => {
           if (batch.id && !isSoldOut) {
-            trackBuyerInquiry(batch.id); // Triggers the analytics counter!
+            setIsContacting(true);
+            await trackBuyerInquiry(batch.id); // 👈 Waits for Firebase to finish!
+            setIsContacting(false);
           }
-          onContact(batch);
+          onContact(batch); // Then opens WhatsApp
         }}
-        disabled={isSoldOut}
+        disabled={isSoldOut || isContacting}
         className={`w-full py-3.5 rounded-xl font-bold border-2 transition-all duration-300 flex items-center justify-center gap-2 ${
             isSoldOut 
             ? "bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed" 
             : "bg-white border-transparent text-slate-800 hover:border-green-500 hover:text-green-700 hover:shadow-lg shadow-md"
         }`}
       >
-        {isSoldOut ? "Batch Sold Out" : "View Contact Details"} 
-        {!isSoldOut && <ArrowRight size={18} className="text-slate-400 group-hover:text-green-600 transition-colors"/>}
+        {isContacting ? (
+          <span className="flex items-center gap-2">
+            <Loader2 className="animate-spin" size={18} /> Connecting...
+          </span>
+        ) : isSoldOut ? (
+          "Batch Sold Out"
+        ) : (
+          <>View Contact Details <ArrowRight size={18} className="text-slate-400 group-hover:text-green-600 transition-colors"/></>
+        )}
       </button>
     </div>
   );
