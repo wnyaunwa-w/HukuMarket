@@ -1,193 +1,99 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"; 
-import { auth, googleProvider, db } from "@/lib/firebase"; // 👈 Added db
-import { doc, getDoc } from "firebase/firestore"; // 👈 Added Firestore methods
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Loader2, Phone, Lock } from "lucide-react";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const { resetPassword } = useAuth(); 
-  
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+export default function Login() {
+  const [phone, setPhone] = useState("");
+  const [pin, setPin] = useState("");
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  
+  const { login, loginWithGoogle } = useAuth();
+  const router = useRouter();
 
-  // 👈 HELPER: Fetch user role and route accordingly
-  const routeUserBasedOnRole = async (uid: string) => {
-    try {
-      const userDoc = await getDoc(doc(db, "users", uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        if (userData.role === "buyer") {
-          router.push("/");
-        } else {
-          router.push("/dashboard");
-        }
-      } else {
-        // Fallback if no profile is found
-        router.push("/"); 
-      }
-    } catch (err) {
-      console.error("Error fetching user role:", err);
-      router.push("/"); // Fallback
-    }
+  const formatPhone = (p: string) => {
+    let cleaned = p.replace(/\D/g, ''); 
+    if (cleaned.startsWith('0')) cleaned = '263' + cleaned.substring(1); 
+    return cleaned;
   };
 
-  // 🟢 DIRECT GOOGLE LOGIN HANDLER
-  const handleGoogleLogin = async () => {
-    setLoading(true); // 👈 Set loading true to prevent multiple clicks
-    setError("");
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      await routeUserBasedOnRole(result.user.uid); // 👈 Route based on role
-    } catch (err: any) {
-      console.error("Google Login Error:", err);
-      setError("Google Login failed. Please try again.");
-      setLoading(false); // Only turn off loading if there's an error
-    }
-  };
-
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
+    setLoading(true);
+
+    const pseudoEmail = `${formatPhone(phone)}@hukumarket.com`;
+    const pseudoPassword = `${pin}HUKU!`;
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      await routeUserBasedOnRole(userCredential.user.uid); // 👈 Route based on role
+      await login(pseudoEmail, pseudoPassword);
+      router.push("/dashboard");
     } catch (err: any) {
-      setError("Invalid email or password. Please try again.");
-      setLoading(false); // Only turn off loading if there's an error
-    } 
-  };
-
-  // Handle Forgot Password
-  const handleForgotPassword = async () => {
-    if (!email) {
-      setError("Please enter your email address above to reset your password.");
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      await resetPassword(email);
-      setResetSent(true);
-      setError("");
-    } catch (err: any) {
-      setError("Failed to send reset email. " + err.message);
+      setError("Incorrect phone number or PIN.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      await loginWithGoogle();
+      router.push("/dashboard");
+    } catch (err) {
+      setError("Google sign-in failed.");
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="bg-white max-w-md w-full p-8 rounded-3xl shadow-xl border border-slate-100">
-        
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-black text-slate-900 mb-2">Welcome Back 👋</h1>
-          <p className="text-slate-500">Login to manage your HukuMarket account.</p>
+    <div className="min-h-[80vh] flex items-center justify-center p-4">
+      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl max-w-md w-full">
+        <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-orange-100">
+          <span className="text-3xl">🐔</span>
         </div>
+        <h1 className="text-3xl font-black text-slate-900 mb-2 text-center">Welcome Back</h1>
+        <p className="text-slate-500 text-center mb-8">Enter your mobile number and PIN</p>
 
-        {/* Google Login Button */}
-        <button
-          onClick={handleGoogleLogin} 
-          type="button" 
-          disabled={loading} // Prevent clicks while loading
-          className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 p-3 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition mb-6 disabled:opacity-50"
-        >
-          {loading ? (
-             <Loader2 className="animate-spin text-slate-400" />
-          ) : (
-             <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-6 w-6" alt="Google" />
-          )}
-          Login with Google
-        </button>
+        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm font-medium border border-red-100 text-center">{error}</div>}
 
-        <div className="relative flex py-2 items-center mb-6">
-          <div className="flex-grow border-t border-slate-200"></div>
-          <span className="flex-shrink mx-4 text-slate-400 text-sm">Or login with email</span>
-          <div className="flex-grow border-t border-slate-200"></div>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 text-center">
-            {error}
-          </div>
-        )}
-
-        {resetSent && (
-          <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm mb-4 text-center font-medium">
-             ✅ Password reset email sent! Check your inbox.
-          </div>
-        )}
-
-        <form onSubmit={handleEmailLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Email</label>
-            <input
-              type="email"
-              required
-              className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-huku-orange outline-none transition"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. farmer@gmail.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Password</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Mobile Number</label>
             <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"} 
-                required
-                className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-huku-orange outline-none transition pr-10"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            
-            <div className="flex justify-end mt-2">
-              <button 
-                type="button"
-                onClick={handleForgotPassword}
-                className="text-sm font-bold text-huku-orange hover:text-orange-700 transition"
-              >
-                Forgot Password?
-              </button>
+              <Phone className="absolute left-3 top-3 text-slate-400" size={20} />
+              <input type="tel" required className="w-full pl-10 p-3 border rounded-xl outline-none focus:ring-2 ring-orange-100 bg-slate-50" placeholder="0771 234 567" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-slate-900 text-white p-4 rounded-xl font-bold text-lg hover:bg-slate-800 transition shadow-lg shadow-slate-200 flex justify-center mt-2 disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="animate-spin" /> : "Login"}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">4-Digit PIN</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 text-slate-400" size={20} />
+              <input type="password" required maxLength={4} inputMode="numeric" pattern="\d{4}" className="w-full pl-10 p-3 border rounded-xl outline-none focus:ring-2 ring-orange-100 bg-slate-50 text-center text-xl tracking-widest font-black" placeholder="••••" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} />
+            </div>
+          </div>
+
+          <button disabled={loading} type="submit" className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition flex justify-center items-center shadow-lg">
+            {loading ? <Loader2 className="animate-spin" /> : "Log In"}
           </button>
         </form>
 
-        <p className="text-center text-slate-500 mt-8">
-          No account?{" "}
-          <Link href="/signup" className="text-huku-orange font-bold hover:underline">
-            Get Started
-          </Link>
+        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+          <p className="text-slate-500 text-sm mb-4">Admin or early user?</p>
+          <button onClick={handleGoogleLogin} type="button" className="w-full bg-white border-2 border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition flex justify-center items-center gap-2">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+            Sign in with Google
+          </button>
+        </div>
+
+        <p className="text-center mt-6 text-sm text-slate-500 font-medium">
+          New to HukuMarket? <Link href="/signup" className="text-huku-orange font-bold hover:underline">Create an account</Link>
         </p>
       </div>
     </div>
