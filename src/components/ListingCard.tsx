@@ -8,7 +8,8 @@ import {
   toggleFavorite, 
   getFavoriteIds, 
   getUserProfile, 
-  getFarmerReviews 
+  getFarmerReviews,
+  trackBuyerInquiry // 👈 Added the tracking function here!
 } from "@/lib/db-service";
 import { FarmerBadge } from "@/components/FarmerBadge"; 
 
@@ -178,8 +179,14 @@ export function ListingCard({ batch, onContact }: ListingCardProps) {
         <span className="font-medium leading-snug line-clamp-2">{batch.location}</span>
       </div>
 
+      {/* 👈 ACTION BUTTON WITH INQUIRY TRACKING INJECTED */}
       <button 
-        onClick={() => onContact(batch)}
+        onClick={() => {
+          if (batch.id && !isSoldOut) {
+            trackBuyerInquiry(batch.id); // Triggers the analytics counter!
+          }
+          onContact(batch);
+        }}
         disabled={isSoldOut}
         className={`w-full py-3.5 rounded-xl font-bold border-2 transition-all duration-300 flex items-center justify-center gap-2 ${
             isSoldOut 

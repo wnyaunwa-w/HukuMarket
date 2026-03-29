@@ -13,7 +13,8 @@ import {
   setDoc, 
   updateDoc,      
   runTransaction,
-  deleteDoc 
+  deleteDoc,
+  increment // 👈 Moved this to the top where it belongs!
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -29,6 +30,8 @@ export interface Batch {
   location: string;
   pricePerBird: number;
   createdAt: any;
+  inquiries?: number; // 👈 ADDED FOR ANALYTICS
+  soldCount?: number; // 👈 ADDED FOR ANALYTICS
 }
 
 // 1. Create Batch
@@ -83,7 +86,7 @@ export async function getAllBatches() {
     const snapshot = await getDocs(q);
     const allBatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Batch[];
 
-    // 👈 2. ZERO-STOCK FILTER ONLY (No more biological clock / 14-day expiry!)
+    // ZERO-STOCK FILTER ONLY
     return allBatches.filter(batch => batch.count > 0);
 
   } catch (error) {
@@ -161,7 +164,8 @@ export async function updateBatchStock(batchId: string, soldAmount: number) {
       }
 
       transaction.update(batchRef, { 
-        count: currentCount - soldAmount 
+        count: currentCount - soldAmount,
+        soldCount: increment(soldAmount) // Automatically tracks sold amount for analytics
       });
     });
     return true;
@@ -474,5 +478,18 @@ export async function cleanUpOrphanedBatches() {
   } catch (error) {
     console.error("Cleanup failed:", error);
     throw error;
+  }
+}
+
+// 📈 TRACK BUYER INQUIRY
+export async function trackBuyerInquiry(batchId: string) {
+  if (!batchId) return;
+  try {
+    const batchRef = doc(db, "batches", batchId);
+    await updateDoc(batchRef, {
+      inquiries: increment(1)
+    });
+  } catch (error) {
+    console.error("Failed to track inquiry:", error);
   }
 }
