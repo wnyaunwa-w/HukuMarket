@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { createBatch } from "@/lib/db-service"; 
 import { useAuth } from "@/context/AuthContext"; 
 import { Loader2, Bird, Snowflake } from "lucide-react";
-import { BREEDS } from "@/lib/chickenLogic";
 import { SubscriptionGate } from "@/components/SubscriptionGate"; 
 
 export default function CreateListing() {
@@ -14,10 +13,9 @@ export default function CreateListing() {
 
   const [listingType, setListingType] = useState<'live' | 'dressed'>('live');
 
-  // 👈 Removed hatchDate from here entirely
+  // 👈 Simplified state: Default to Broiler, removed 'otherBreed'
   const [formData, setFormData] = useState({
-    breed: "COBB_500",
-    otherBreed: "", 
+    breed: "Broiler", 
     count: 100,
     pricePerBird: 5,
     city: "Harare",   
@@ -35,15 +33,14 @@ export default function CreateListing() {
     setLoading(true);
 
     try {
-      const finalBreed = formData.breed === "OTHER" ? formData.otherBreed : formData.breed;
       const finalLocation = `${formData.city}, ${formData.suburb}`;
 
       await createBatch({
         userId: currentUser.uid,
         listingType: listingType, 
-        breed: listingType === 'live' ? finalBreed : "DRESSED", 
+        breed: listingType === 'live' ? formData.breed : "DRESSED", 
         count: Number(formData.count),
-        // 👈 We just pass a placeholder date now so the DB doesn't crash
+        // We just pass a placeholder date now so the DB doesn't crash
         hatchDate: new Date().toISOString().split("T")[0], 
         location: finalLocation, 
         pricePerBird: Number(formData.pricePerBird),
@@ -62,7 +59,7 @@ export default function CreateListing() {
     <SubscriptionGate>
       <div className="max-w-2xl mx-auto py-10 px-4">
         <h1 className="text-3xl font-bold mb-2">Create a New Listing 🐣</h1>
-        <p className="text-slate-500 mb-8">List your broiler chickens on HukuMarket.</p>
+        <p className="text-slate-500 mb-8">List your chickens on HukuMarket.</p>
 
         <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
           
@@ -79,7 +76,7 @@ export default function CreateListing() {
                 }`}
               >
                 <Bird size={28} className="mb-2" />
-                <span className="font-bold">Live Broilers</span>
+                <span className="font-bold">Live Birds</span>
               </button>
               
               <button
@@ -97,31 +94,18 @@ export default function CreateListing() {
             </div>
           </div>
 
-          {/* 👈 Removed the entire Date Input block from this section */}
+          {/* 👈 Clean, simplified Breed selection */}
           {listingType === 'live' && (
             <div className="animate-in fade-in slide-in-from-top-2">
-              <label className="block text-sm font-bold text-slate-700 mb-2">Breed</label>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Bird Type</label>
               <select
-                className="w-full p-3 border rounded-lg bg-slate-50 outline-none focus:ring-2 ring-orange-100"
+                className="w-full p-3 border rounded-lg bg-slate-50 outline-none focus:ring-2 ring-orange-100 font-medium text-slate-800"
                 value={formData.breed}
                 onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
               >
-                {Object.entries(BREEDS).map(([key, info]) => (
-                  <option key={key} value={key}>{info.name}</option>
-                ))}
-                <option value="OTHER">Other (Specify below)</option>
+                <option value="Broiler">Broiler</option>
+                <option value="Roadrunner">Roadrunner</option>
               </select>
-              
-              {formData.breed === "OTHER" && (
-                <input
-                  type="text"
-                  placeholder="Type breed name..."
-                  required
-                  className="w-full p-3 mt-2 border rounded-lg bg-white outline-none focus:ring-2 ring-orange-100 animate-in fade-in slide-in-from-top-1"
-                  value={formData.otherBreed}
-                  onChange={(e) => setFormData({ ...formData, otherBreed: e.target.value })}
-                />
-              )}
             </div>
           )}
 
