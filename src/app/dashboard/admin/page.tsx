@@ -15,7 +15,7 @@ import {
 import { 
   Loader2, Search, DollarSign, CheckCircle, 
   AlertCircle, Download, Trash2, Ban, Unlock, 
-  Bird, Users
+  Bird, Users, TrendingUp, CreditCard
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -27,18 +27,17 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"approvals" | "registry">("approvals");
   
-  // 👈 NEW: Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 25;
   
-  // Stats State
   const [stats, setStats] = useState({
     totalBirds: 0,
-    activeSubs: 0,
+    totalActiveFarmers: 0, 
+    payingSubs: 0,
+    trialSubs: 0,
     totalRevenue: 0 
   });
   
-  // Fee State
   const [fee, setFee] = useState(5);
   const [isEditingFee, setIsEditingFee] = useState(false);
   const [newFee, setNewFee] = useState(5);
@@ -66,15 +65,19 @@ export default function AdminPage() {
       const allBatches = batchesData as any[];
 
       const birdCount = allBatches.reduce((acc, batch) => acc + (batch.count || 0), 0);
-      const activeFarmers = allUsers.filter(u => u.role === 'farmer' && u.subscriptionStatus === 'active');
+      
+      const payingFarmers = allUsers.filter(u => u.role === 'farmer' && u.subscriptionStatus === 'active');
+      const trialFarmers = allUsers.filter(u => u.role === 'farmer' && u.subscriptionStatus === 'trial');
       
       setUsers(allUsers);
       setFee(currentFee);
       setNewFee(currentFee);
       setStats({
         totalBirds: birdCount,
-        activeSubs: activeFarmers.length,
-        totalRevenue: activeFarmers.length * currentFee
+        totalActiveFarmers: payingFarmers.length + trialFarmers.length,
+        payingSubs: payingFarmers.length,
+        trialSubs: trialFarmers.length,
+        totalRevenue: payingFarmers.length * currentFee 
       });
 
     } catch (error) {
@@ -88,7 +91,7 @@ export default function AdminPage() {
     await updateSubscriptionFee(newFee);
     setFee(newFee);
     setIsEditingFee(false);
-    setStats(prev => ({ ...prev, totalRevenue: prev.activeSubs * newFee }));
+    setStats(prev => ({ ...prev, totalRevenue: prev.payingSubs * newFee })); 
     alert("Fee updated successfully!");
   };
 
@@ -140,7 +143,6 @@ export default function AdminPage() {
     return matchEmail || matchName || matchPhone;
   });
 
-  // 👈 NEW: Pagination Calculations
   const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
   const paginatedUsers = filteredUsers.slice(
     (currentPage - 1) * ITEMS_PER_PAGE, 
@@ -158,9 +160,10 @@ export default function AdminPage() {
         <p className="text-slate-500">Overview of platform activity and settings.</p>
       </div>
 
-      {/* STATS GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
+      {/* 📊 4-CARD STATS GRID */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
         
+        {/* CARD 1: Total Birds */}
         <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-huku-orange/30 transition-colors">
           <div className="bg-orange-50 p-3 md:p-4 rounded-xl text-huku-orange shrink-0">
             <Bird size={28} className="md:w-8 md:h-8" />
@@ -173,23 +176,41 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-blue-200 transition-colors">
+        {/* CARD 2: Active Farmers */}
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-blue-200 transition-colors relative overflow-hidden">
           <div className="bg-blue-50 p-3 md:p-4 rounded-xl text-blue-600 shrink-0">
             <Users size={28} className="md:w-8 md:h-8" />
           </div>
-          <div className="min-w-0">
-            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest truncate">Active Subs</p>
+          <div className="min-w-0 z-10">
+            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest truncate">Active Farmers</p>
             <div className="flex items-baseline gap-1">
-              <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">{stats.activeSubs}</h3>
-              <span className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-tighter">Farmers</span>
+              <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">{stats.totalActiveFarmers}</h3>
             </div>
+            <p className="text-[10px] text-slate-400 font-medium mt-1">
+              <span className="text-green-600 font-bold">{stats.payingSubs} Paying</span> • {stats.trialSubs} Trial
+            </p>
           </div>
         </div>
 
-        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-4 sm:col-span-2 lg:col-span-1 hover:border-green-200 transition-colors">
+        {/* CARD 3: Est. Monthly Revenue (NEW DEDICATED CARD) */}
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-emerald-200 transition-colors">
+          <div className="bg-emerald-50 p-3 md:p-4 rounded-xl text-emerald-600 shrink-0">
+            <TrendingUp size={28} className="md:w-8 md:h-8" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest truncate">Est. Revenue</p>
+            <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
+              {stats.totalRevenue === 0 ? "$0" : `$${stats.totalRevenue}`}
+            </h3>
+            <p className="text-[10px] text-slate-400 font-medium mt-1">/ month</p>
+          </div>
+        </div>
+
+        {/* CARD 4: Monthly Subscription Fee */}
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-4 hover:border-slate-300 transition-colors">
           <div className="flex items-center gap-4 min-w-0">
-            <div className="bg-green-50 p-3 md:p-4 rounded-xl text-green-600 shrink-0">
-              <DollarSign size={28} className="md:w-8 md:h-8" />
+            <div className="bg-slate-50 p-3 md:p-4 rounded-xl text-slate-600 shrink-0">
+              <CreditCard size={28} className="md:w-8 md:h-8" />
             </div>
             <div className="min-w-0">
               <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest truncate">Monthly Fee</p>
@@ -200,7 +221,7 @@ export default function AdminPage() {
                      type="number" 
                      value={newFee}
                      onChange={(e) => setNewFee(Number(e.target.value))}
-                     className="w-16 p-1 text-lg border-b-2 border-green-500 bg-transparent font-bold outline-none"
+                     className="w-16 p-1 text-lg border-b-2 border-slate-500 bg-transparent font-bold outline-none"
                      autoFocus
                    />
                  </div>
@@ -215,13 +236,13 @@ export default function AdminPage() {
           <div className="shrink-0">
              {isEditingFee ? (
                <div className="flex flex-col gap-1">
-                 <button onClick={handleSaveFee} className="bg-green-600 text-white px-3 py-1 rounded-lg text-[10px] font-bold shadow-sm">SAVE</button>
+                 <button onClick={handleSaveFee} className="bg-slate-800 text-white px-3 py-1 rounded-lg text-[10px] font-bold shadow-sm hover:bg-slate-700">SAVE</button>
                  <button onClick={() => setIsEditingFee(false)} className="text-slate-400 text-[10px] font-bold hover:text-slate-600">CANCEL</button>
                </div>
              ) : (
                <button 
                  onClick={() => setIsEditingFee(true)} 
-                 className="text-[10px] font-bold text-green-700 bg-green-50 hover:bg-green-100 px-3 py-2 rounded-lg border border-green-100 transition-all"
+                 className="text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-all"
                >
                  CHANGE
                </button>
@@ -299,7 +320,7 @@ export default function AdminPage() {
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  setCurrentPage(1); // 👈 Reset to page 1 on search
+                  setCurrentPage(1);
                 }}
               />
             </div>
@@ -324,7 +345,6 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {/* 👈 Now mapping over paginatedUsers instead of filteredUsers */}
                 {paginatedUsers.map(user => (
                   <tr key={user.id} className={`hover:bg-slate-50/50 transition ${user.isBlocked ? 'bg-red-50/50' : ''}`}>
                     <td className="p-4">
@@ -344,8 +364,8 @@ export default function AdminPage() {
                     </td>
                     <td className="p-4">
                       {user.role !== 'admin' ? (
-                        <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold w-fit ${user.subscriptionStatus === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                          <div className={`w-2 h-2 rounded-full ${user.subscriptionStatus === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
+                        <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold w-fit ${user.subscriptionStatus === 'active' ? 'bg-green-100 text-green-700' : (user.subscriptionStatus === 'trial' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-500')}`}>
+                          <div className={`w-2 h-2 rounded-full ${user.subscriptionStatus === 'active' ? 'bg-green-500' : (user.subscriptionStatus === 'trial' ? 'bg-purple-500' : 'bg-slate-400')}`} />
                           {user.subscriptionStatus?.toUpperCase() || 'INACTIVE'}
                         </span>
                       ) : (
@@ -381,7 +401,7 @@ export default function AdminPage() {
             </table>
           </div>
 
-          {/* 👈 NEW: Pagination Controls Footer */}
+          {/* Pagination Controls Footer */}
           {totalPages > 1 && (
             <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500 bg-slate-50/50">
               <div>
