@@ -58,7 +58,6 @@ export default function AdminPage() {
         getSubscriptionFee()
       ]);
 
-      // Cast usersData to 'any[]' so TypeScript knows it has 'role' and 'status'
       const allUsers = usersData as any[]; 
       const allBatches = batchesData as any[];
 
@@ -88,7 +87,6 @@ export default function AdminPage() {
     await updateSubscriptionFee(newFee);
     setFee(newFee);
     setIsEditingFee(false);
-    // Recalculate revenue estimate with new fee
     setStats(prev => ({ ...prev, totalRevenue: prev.activeSubs * newFee }));
     alert("Fee updated successfully!");
   };
@@ -119,7 +117,7 @@ export default function AdminPage() {
   const downloadCSV = () => {
     const headers = ["Name,Email,Phone,Role,Subscription Status,Blocked Status"];
     const rows = users.map(u => 
-      `"${u.displayName || ''}","${u.email || ''}","${u.phoneNumber || 'N/A'}","${u.role}","${u.subscriptionStatus || 'N/A'}","${u.isBlocked ? 'Yes' : 'No'}"`
+      `"${u.displayName || ''}","${u.email || ''}","${u.phone || u.phoneNumber || 'N/A'}","${u.role || 'farmer'}","${u.subscriptionStatus || 'N/A'}","${u.isBlocked ? 'Yes' : 'No'}"`
     );
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
     const encodedUri = encodeURI(csvContent);
@@ -131,12 +129,16 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
-  // Filters
-  const pendingFarmers = users.filter(u => u.role === 'farmer' && u.subscriptionStatus === 'inactive');
-  const filteredUsers = users.filter(u => 
-    u.email?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.displayName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // 👈 FIXED FILTERS: Safely checks email, name, AND phone without crashing
+  const pendingFarmers = users.filter(u => (u.role === 'farmer' || !u.role) && u.subscriptionStatus === 'inactive');
+  
+  const filteredUsers = users.filter(u => {
+    const search = searchTerm.toLowerCase();
+    const matchEmail = (u.email || "").toLowerCase().includes(search);
+    const matchName = (u.displayName || "").toLowerCase().includes(search);
+    const matchPhone = (u.phone || u.phoneNumber || "").toLowerCase().includes(search);
+    return matchEmail || matchName || matchPhone;
+  });
 
   if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-huku-orange" /></div>;
 
@@ -149,10 +151,9 @@ export default function AdminPage() {
         <p className="text-slate-500">Overview of platform activity and settings.</p>
       </div>
 
-      {/* 📊 UPDATED STATS GRID (Responsive) */}
+      {/* STATS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
         
-        {/* CARD 1: TOTAL BIRDS */}
         <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-huku-orange/30 transition-colors">
           <div className="bg-orange-50 p-3 md:p-4 rounded-xl text-huku-orange shrink-0">
             <Bird size={28} className="md:w-8 md:h-8" />
@@ -165,7 +166,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* CARD 2: ACTIVE SUBS */}
         <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-blue-200 transition-colors">
           <div className="bg-blue-50 p-3 md:p-4 rounded-xl text-blue-600 shrink-0">
             <Users size={28} className="md:w-8 md:h-8" />
@@ -179,7 +179,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* CARD 3: SUBSCRIPTION FEE */}
         <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-4 sm:col-span-2 lg:col-span-1 hover:border-green-200 transition-colors">
           <div className="flex items-center gap-4 min-w-0">
             <div className="bg-green-50 p-3 md:p-4 rounded-xl text-green-600 shrink-0">
@@ -241,7 +240,7 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* 🟢 APPROVALS TAB */}
+      {/* APPROVALS TAB */}
       {activeTab === 'approvals' && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
            <h3 className="font-bold text-slate-700 flex items-center gap-2">
@@ -260,11 +259,11 @@ export default function AdminPage() {
                     <div className="absolute top-0 right-0 bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-bl-lg">WAITING</div>
                     <div className="flex items-center gap-3 mb-3">
                       <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-500">
-                        {user.displayName?.charAt(0)}
+                        {user.displayName?.charAt(0) || "F"}
                       </div>
                       <div>
-                        <h4 className="font-bold text-slate-900">{user.displayName}</h4>
-                        <p className="text-xs text-slate-500">{user.email}</p>
+                        <h4 className="font-bold text-slate-900">{user.displayName || "Farmer"}</h4>
+                        <p className="text-xs text-slate-500">{user.phone || user.email || "No contact info"}</p>
                       </div>
                     </div>
                     <button 
@@ -280,7 +279,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 👥 USER REGISTRY TAB */}
+      {/* USER REGISTRY TAB */}
       {activeTab === 'registry' && (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-2">
           {/* Toolbar */}
@@ -289,7 +288,7 @@ export default function AdminPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 className="pl-10 p-2 bg-slate-50 border border-slate-200 rounded-lg w-full outline-none focus:ring-2 ring-orange-100 text-sm" 
-                placeholder="Search name or email..." 
+                placeholder="Search name, email, or phone..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -319,21 +318,21 @@ export default function AdminPage() {
                   <tr key={user.id} className={`hover:bg-slate-50/50 transition ${user.isBlocked ? 'bg-red-50/50' : ''}`}>
                     <td className="p-4">
                       <div className="font-bold text-slate-800 flex items-center gap-2">
-                        {user.displayName}
+                        {user.displayName || "Unknown Farmer"}
                         {user.isBlocked && <span className="text-[10px] bg-red-600 text-white px-1.5 rounded">BLOCKED</span>}
                       </div>
-                      <div className="text-slate-400 text-xs">{user.email}</div>
+                      <div className="text-slate-400 text-xs">{user.email || "No Email"}</div>
                     </td>
                     <td className="p-4 font-medium text-slate-600">
-                      {user.phoneNumber || <span className="text-slate-300 italic">N/A</span>}
+                      {user.phone || user.phoneNumber ? (user.phone || user.phoneNumber) : <span className="text-slate-300 italic">N/A</span>}
                     </td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs font-bold ${user.role === 'farmer' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {user.role.toUpperCase()}
+                      <span className={`px-2 py-1 rounded text-xs font-bold ${user.role === 'admin' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                        {(user.role || 'FARMER').toUpperCase()}
                       </span>
                     </td>
                     <td className="p-4">
-                      {user.role === 'farmer' ? (
+                      {user.role !== 'admin' ? (
                         <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold w-fit ${user.subscriptionStatus === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                           <div className={`w-2 h-2 rounded-full ${user.subscriptionStatus === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
                           {user.subscriptionStatus?.toUpperCase() || 'INACTIVE'}
@@ -344,7 +343,6 @@ export default function AdminPage() {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-center gap-2">
-                        {/* Block Button */}
                         <button 
                           onClick={() => handleBlockUser(user.id, user.isBlocked)}
                           title={user.isBlocked ? "Unblock User" : "Block User"}
@@ -357,7 +355,6 @@ export default function AdminPage() {
                           {user.isBlocked ? <Unlock size={16} /> : <Ban size={16} />}
                         </button>
                         
-                        {/* Delete Button */}
                         <button 
                           onClick={() => handleDeleteUser(user.id)}
                           title="Delete User"
