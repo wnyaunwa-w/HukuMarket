@@ -168,8 +168,9 @@ export default function AdminPage() {
           <div className="bg-orange-50 p-3 md:p-4 rounded-xl text-huku-orange shrink-0">
             <Bird size={28} className="md:w-8 md:h-8" />
           </div>
-          <div className="min-w-0">
-            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase truncate">Total Birds</p>
+          <div>
+            {/* Removed truncate class here */}
+            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase">Total Birds</p>
             <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
               {stats.totalBirds.toLocaleString()}
             </h3>
@@ -181,12 +182,13 @@ export default function AdminPage() {
           <div className="bg-blue-50 p-3 md:p-4 rounded-xl text-blue-600 shrink-0">
             <Users size={28} className="md:w-8 md:h-8" />
           </div>
-          <div className="min-w-0 z-10">
-            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase truncate">Active Farmers</p>
+          <div className="z-10">
+            {/* Removed truncate class here */}
+            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase">Active Farmers</p>
             <div className="flex items-baseline gap-1">
               <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">{stats.totalActiveFarmers}</h3>
             </div>
-            <p className="text-[10px] text-slate-400 font-medium mt-1 truncate">
+            <p className="text-[10px] text-slate-400 font-medium mt-1">
               <span className="text-green-600 font-bold">{stats.payingSubs} Paying</span> • {stats.trialSubs} Trial
             </p>
           </div>
@@ -197,8 +199,9 @@ export default function AdminPage() {
           <div className="bg-emerald-50 p-3 md:p-4 rounded-xl text-emerald-600 shrink-0">
             <TrendingUp size={28} className="md:w-8 md:h-8" />
           </div>
-          <div className="min-w-0">
-            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase truncate">Est. Revenue</p>
+          <div>
+            {/* Removed truncate class here */}
+            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase">Est. Revenue</p>
             <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
               {stats.totalRevenue === 0 ? "$0" : `$${stats.totalRevenue}`}
             </h3>
@@ -208,12 +211,13 @@ export default function AdminPage() {
 
         {/* CARD 4: Monthly Subscription Fee */}
         <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-2 hover:border-slate-300 transition-colors">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-3">
             <div className="bg-slate-50 p-3 md:p-4 rounded-xl text-slate-600 shrink-0">
               <CreditCard size={28} className="md:w-8 md:h-8" />
             </div>
-            <div className="min-w-0">
-              <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase truncate">Monthly Fee</p>
+            <div>
+              {/* Removed truncate class here - text will flow naturally */}
+              <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase whitespace-nowrap">Monthly Fee</p>
                {isEditingFee ? (
                  <div className="flex items-center gap-1 mt-1">
                    <span className="font-bold text-slate-400">$</span>
