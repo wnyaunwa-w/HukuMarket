@@ -164,12 +164,12 @@ export default function AdminPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
         
         {/* CARD 1: Total Birds */}
-        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-huku-orange/30 transition-colors">
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 hover:border-huku-orange/30 transition-colors">
           <div className="bg-orange-50 p-3 md:p-4 rounded-xl text-huku-orange shrink-0">
             <Bird size={28} className="md:w-8 md:h-8" />
           </div>
           <div className="min-w-0">
-            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest truncate">Total Birds</p>
+            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase truncate">Total Birds</p>
             <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
               {stats.totalBirds.toLocaleString()}
             </h3>
@@ -177,28 +177,28 @@ export default function AdminPage() {
         </div>
 
         {/* CARD 2: Active Farmers */}
-        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-blue-200 transition-colors relative overflow-hidden">
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 hover:border-blue-200 transition-colors relative overflow-hidden">
           <div className="bg-blue-50 p-3 md:p-4 rounded-xl text-blue-600 shrink-0">
             <Users size={28} className="md:w-8 md:h-8" />
           </div>
           <div className="min-w-0 z-10">
-            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest truncate">Active Farmers</p>
+            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase truncate">Active Farmers</p>
             <div className="flex items-baseline gap-1">
               <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">{stats.totalActiveFarmers}</h3>
             </div>
-            <p className="text-[10px] text-slate-400 font-medium mt-1">
+            <p className="text-[10px] text-slate-400 font-medium mt-1 truncate">
               <span className="text-green-600 font-bold">{stats.payingSubs} Paying</span> • {stats.trialSubs} Trial
             </p>
           </div>
         </div>
 
-        {/* CARD 3: Est. Monthly Revenue (NEW DEDICATED CARD) */}
-        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-emerald-200 transition-colors">
+        {/* CARD 3: Est. Monthly Revenue */}
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 hover:border-emerald-200 transition-colors">
           <div className="bg-emerald-50 p-3 md:p-4 rounded-xl text-emerald-600 shrink-0">
             <TrendingUp size={28} className="md:w-8 md:h-8" />
           </div>
           <div className="min-w-0">
-            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest truncate">Est. Revenue</p>
+            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase truncate">Est. Revenue</p>
             <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
               {stats.totalRevenue === 0 ? "$0" : `$${stats.totalRevenue}`}
             </h3>
@@ -207,13 +207,13 @@ export default function AdminPage() {
         </div>
 
         {/* CARD 4: Monthly Subscription Fee */}
-        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-4 hover:border-slate-300 transition-colors">
-          <div className="flex items-center gap-4 min-w-0">
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-2 hover:border-slate-300 transition-colors">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="bg-slate-50 p-3 md:p-4 rounded-xl text-slate-600 shrink-0">
               <CreditCard size={28} className="md:w-8 md:h-8" />
             </div>
             <div className="min-w-0">
-              <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest truncate">Monthly Fee</p>
+              <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase truncate">Monthly Fee</p>
                {isEditingFee ? (
                  <div className="flex items-center gap-1 mt-1">
                    <span className="font-bold text-slate-400">$</span>
@@ -221,7 +221,7 @@ export default function AdminPage() {
                      type="number" 
                      value={newFee}
                      onChange={(e) => setNewFee(Number(e.target.value))}
-                     className="w-16 p-1 text-lg border-b-2 border-slate-500 bg-transparent font-bold outline-none"
+                     className="w-12 p-1 text-lg border-b-2 border-slate-500 bg-transparent font-bold outline-none"
                      autoFocus
                    />
                  </div>
@@ -236,13 +236,13 @@ export default function AdminPage() {
           <div className="shrink-0">
              {isEditingFee ? (
                <div className="flex flex-col gap-1">
-                 <button onClick={handleSaveFee} className="bg-slate-800 text-white px-3 py-1 rounded-lg text-[10px] font-bold shadow-sm hover:bg-slate-700">SAVE</button>
+                 <button onClick={handleSaveFee} className="bg-slate-800 text-white px-2 py-1.5 rounded-lg text-[10px] font-bold shadow-sm hover:bg-slate-700">SAVE</button>
                  <button onClick={() => setIsEditingFee(false)} className="text-slate-400 text-[10px] font-bold hover:text-slate-600">CANCEL</button>
                </div>
              ) : (
                <button 
                  onClick={() => setIsEditingFee(true)} 
-                 className="text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-all"
+                 className="text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded-lg transition-all"
                >
                  CHANGE
                </button>
