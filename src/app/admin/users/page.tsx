@@ -20,6 +20,10 @@ export default function UserManager() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   
+  // 👈 NEW: Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 25;
+
   // KYC Modal State
   const [reviewUser, setReviewUser] = useState<any | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -66,12 +70,11 @@ export default function UserManager() {
     }
   };
 
-  // 🟢 NEW: Approve KYC Application
+  // 🟢 Approve KYC Application
   const handleApproveKYC = async () => {
     if (!reviewUser) return;
     setProcessing(true);
     try {
-      // Set expiration to 1 year from now
       const expiryDate = new Date();
       expiryDate.setFullYear(expiryDate.getFullYear() + 1);
 
@@ -91,7 +94,7 @@ export default function UserManager() {
     }
   };
 
-  // 🔴 NEW: Reject KYC Application
+  // 🔴 Reject KYC Application
   const handleRejectKYC = async () => {
     if (!reviewUser) return;
     if (!confirm("Are you sure you want to reject this application? The farmer will be asked to reapply.")) return;
@@ -100,7 +103,7 @@ export default function UserManager() {
     try {
       await updateDoc(doc(db, "users", reviewUser.id), {
         isVerified: false,
-        verificationStatus: "idle", // Resets them so they can apply again
+        verificationStatus: "idle", 
       });
       
       setReviewUser(null);
@@ -113,9 +116,20 @@ export default function UserManager() {
     }
   };
 
-  const filteredUsers = users.filter(user => 
-    (user.displayName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.email || "").toLowerCase().includes(searchTerm.toLowerCase())
+  // 👈 UPDATED FILTER: Safely checks email, name, AND phone
+  const filteredUsers = users.filter(user => {
+    const search = searchTerm.toLowerCase();
+    const matchName = (user.displayName || "").toLowerCase().includes(search);
+    const matchEmail = (user.email || "").toLowerCase().includes(search);
+    const matchPhone = (user.phone || user.phoneNumber || "").toLowerCase().includes(search);
+    return matchName || matchEmail || matchPhone;
+  });
+
+  // 👈 NEW: Pagination Calculations
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE, 
+    currentPage * ITEMS_PER_PAGE
   );
 
   if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-huku-orange" /></div>;
@@ -213,7 +227,7 @@ export default function UserManager() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
-             <Link href="/dashboard" className="p-2 bg-white rounded-full border hover:bg-slate-50 transition">
+             <Link href="/dashboard/admin" className="p-2 bg-white rounded-full border hover:bg-slate-50 transition">
                <ArrowLeft size={20} className="text-slate-600" />
              </Link>
              <div>
@@ -226,115 +240,142 @@ export default function UserManager() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
               type="text" 
-              placeholder="Search name or email..." 
+              placeholder="Search name, email, phone..." 
               className="pl-10 pr-4 py-2 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-huku-orange w-full md:w-64"
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
+              onChange={e => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1); // 👈 Reset to page 1 on search
+              }}
             />
           </div>
         </div>
 
         {/* 📋 USERS TABLE */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 w-full overflow-x-auto">
-          <table className="w-full text-left min-w-[500px] md:min-w-full">
-            <thead className="bg-slate-50 border-b border-slate-100">
-              <tr>
-                <th className="p-3 md:p-4 text-xs font-bold text-slate-400 uppercase">User</th>
-                {/* Contact Header hidden on mobile */}
-                <th className="p-3 md:p-4 text-xs font-bold text-slate-400 uppercase hidden md:table-cell">Contact</th>
-                <th className="p-3 md:p-4 text-xs font-bold text-slate-400 uppercase">Status</th>
-                <th className="p-3 md:p-4 text-xs font-bold text-slate-400 uppercase text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredUsers.map((user) => {
-                const isPending = user.verificationStatus === "pending_admin_approval";
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 w-full overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[500px] md:min-w-full">
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>
+                  <th className="p-3 md:p-4 text-xs font-bold text-slate-400 uppercase">User</th>
+                  <th className="p-3 md:p-4 text-xs font-bold text-slate-400 uppercase hidden md:table-cell">Contact</th>
+                  <th className="p-3 md:p-4 text-xs font-bold text-slate-400 uppercase">Status</th>
+                  <th className="p-3 md:p-4 text-xs font-bold text-slate-400 uppercase text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedUsers.map((user) => {
+                  const isPending = user.verificationStatus === "pending_admin_approval";
 
-                return (
-                  <tr key={user.id} className={`transition ${isPending ? 'bg-orange-50/50' : 'hover:bg-slate-50/50'}`}>
-                    
-                    {/* User Info */}
-                    <td className="p-3 md:p-4 max-w-[140px] sm:max-w-[200px] md:max-w-none">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 shrink-0 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold overflow-hidden border border-slate-200">
-                          {user.photoURL ? (
-                            <img src={user.photoURL} className="w-full h-full object-cover" />
-                          ) : (
-                            user.displayName?.[0] || "?"
-                          )}
+                  return (
+                    <tr key={user.id} className={`transition ${isPending ? 'bg-orange-50/50' : 'hover:bg-slate-50/50'}`}>
+                      
+                      {/* User Info */}
+                      <td className="p-3 md:p-4 max-w-[140px] sm:max-w-[200px] md:max-w-none">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 shrink-0 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold overflow-hidden border border-slate-200">
+                            {user.photoURL ? (
+                              <img src={user.photoURL} className="w-full h-full object-cover" />
+                            ) : (
+                              user.displayName?.[0] || "?"
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-slate-900 flex items-center gap-1 truncate">
+                              <span className="truncate">{user.displayName || "Unknown Name"}</span>
+                              {user.isVerified && <BadgeCheck size={14} className="text-blue-500 shrink-0" fill="currentColor" />}
+                            </p>
+                            <p className="text-xs text-slate-400 capitalize">{user.role}</p>
+                            <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1 md:hidden truncate">
+                              <span className="truncate">{user.phone || user.email || "No contact info"}</span>
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-slate-900 flex items-center gap-1 truncate">
-                            <span className="truncate">{user.displayName || "Unknown Name"}</span>
-                            {user.isVerified && <BadgeCheck size={14} className="text-blue-500 shrink-0" fill="currentColor" />}
-                          </p>
-                          <p className="text-xs text-slate-400 capitalize">{user.role}</p>
-                          {/* Email - MOBILE ONLY */}
-                          <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1 md:hidden truncate">
-                            <Mail size={12} className="shrink-0" />
-                            <span className="truncate">{user.email}</span>
-                          </p>
+                      </td>
+
+                      {/* Contact - DESKTOP ONLY */}
+                      <td className="p-3 md:p-4 hidden md:table-cell">
+                        <div className="flex flex-col gap-1 text-sm text-slate-600">
+                          <span className="flex items-center gap-2 truncate max-w-[200px] lg:max-w-[250px]">
+                            <span className="truncate">{user.phone || user.email || "No contact info"}</span>
+                          </span>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Contact - DESKTOP ONLY */}
-                    <td className="p-3 md:p-4 hidden md:table-cell">
-                      <div className="flex flex-col gap-1 text-sm text-slate-600">
-                        <span className="flex items-center gap-2 truncate max-w-[200px] lg:max-w-[250px]">
-                          <Mail size={14} className="text-slate-400 shrink-0" /> 
-                          <span className="truncate">{user.email}</span>
-                        </span>
-                      </div>
-                    </td>
+                      {/* Status / Review Button */}
+                      <td className="p-3 md:p-4">
+                        {isPending ? (
+                          <button 
+                            onClick={() => setReviewUser(user)}
+                            className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold bg-huku-orange text-white hover:bg-orange-600 shadow-sm transition animate-pulse whitespace-nowrap"
+                          >
+                            <Eye size={16} /> <span className="hidden sm:inline">Review KYC</span><span className="sm:hidden">Review</span>
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => handleToggleVerify(user.id, user.isVerified)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold transition-all border whitespace-nowrap ${
+                              user.isVerified 
+                              ? "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100" 
+                              : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
+                            }`}
+                          >
+                            {user.isVerified ? (
+                              <> <BadgeCheck size={14} className="shrink-0"/> Verified </>
+                            ) : (
+                              <> <ShieldAlert size={14} className="shrink-0"/> Unverified </>
+                            )}
+                          </button>
+                        )}
+                      </td>
 
-                    {/* Status / Review Button */}
-                    <td className="p-3 md:p-4">
-                      {isPending ? (
+                      {/* Actions */}
+                      <td className="p-3 md:p-4 text-right">
                         <button 
-                          onClick={() => setReviewUser(user)}
-                          className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold bg-huku-orange text-white hover:bg-orange-600 shadow-sm transition animate-pulse whitespace-nowrap"
+                          onClick={() => handleDelete(user.id)}
+                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition shrink-0"
+                          title="Delete User"
                         >
-                          <Eye size={16} /> <span className="hidden sm:inline">Review KYC</span><span className="sm:hidden">Review</span>
+                          <Trash2 size={16} />
                         </button>
-                      ) : (
-                        <button 
-                          onClick={() => handleToggleVerify(user.id, user.isVerified)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold transition-all border whitespace-nowrap ${
-                            user.isVerified 
-                            ? "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100" 
-                            : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-                          }`}
-                        >
-                          {user.isVerified ? (
-                            <> <BadgeCheck size={14} className="shrink-0"/> Verified </>
-                          ) : (
-                            <> <ShieldAlert size={14} className="shrink-0"/> Unverified </>
-                          )}
-                        </button>
-                      )}
-                    </td>
+                      </td>
 
-                    {/* Actions */}
-                    <td className="p-3 md:p-4 text-right">
-                      <button 
-                        onClick={() => handleDelete(user.id)}
-                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition shrink-0"
-                        title="Delete User"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
           {filteredUsers.length === 0 && (
             <div className="p-10 text-center text-slate-400">
               No users found.
+            </div>
+          )}
+
+          {/* 👈 NEW: Pagination Controls Footer */}
+          {totalPages > 1 && (
+            <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500 bg-slate-50/50">
+              <div>
+                Showing <strong>{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</strong> to <strong>{Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)}</strong> of <strong>{filteredUsers.length}</strong> farmers
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition"
+                >
+                  Previous
+                </button>
+                <span className="font-bold text-slate-700">Page {currentPage} of {totalPages}</span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>

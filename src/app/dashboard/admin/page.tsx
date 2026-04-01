@@ -27,6 +27,10 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"approvals" | "registry">("approvals");
   
+  // 👈 NEW: Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 25;
+  
   // Stats State
   const [stats, setStats] = useState({
     totalBirds: 0,
@@ -61,10 +65,7 @@ export default function AdminPage() {
       const allUsers = usersData as any[]; 
       const allBatches = batchesData as any[];
 
-      // 1. Calculate Total Birds
       const birdCount = allBatches.reduce((acc, batch) => acc + (batch.count || 0), 0);
-
-      // 2. Calculate Active Subs
       const activeFarmers = allUsers.filter(u => u.role === 'farmer' && u.subscriptionStatus === 'active');
       
       setUsers(allUsers);
@@ -129,7 +130,6 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
-  // 👈 FIXED FILTERS: Safely checks email, name, AND phone without crashing
   const pendingFarmers = users.filter(u => (u.role === 'farmer' || !u.role) && u.subscriptionStatus === 'inactive');
   
   const filteredUsers = users.filter(u => {
@@ -139,6 +139,13 @@ export default function AdminPage() {
     const matchPhone = (u.phone || u.phoneNumber || "").toLowerCase().includes(search);
     return matchEmail || matchName || matchPhone;
   });
+
+  // 👈 NEW: Pagination Calculations
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE, 
+    currentPage * ITEMS_PER_PAGE
+  );
 
   if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-huku-orange" /></div>;
 
@@ -290,7 +297,10 @@ export default function AdminPage() {
                 className="pl-10 p-2 bg-slate-50 border border-slate-200 rounded-lg w-full outline-none focus:ring-2 ring-orange-100 text-sm" 
                 placeholder="Search name, email, or phone..." 
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1); // 👈 Reset to page 1 on search
+                }}
               />
             </div>
             <button 
@@ -314,7 +324,8 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredUsers.map(user => (
+                {/* 👈 Now mapping over paginatedUsers instead of filteredUsers */}
+                {paginatedUsers.map(user => (
                   <tr key={user.id} className={`hover:bg-slate-50/50 transition ${user.isBlocked ? 'bg-red-50/50' : ''}`}>
                     <td className="p-4">
                       <div className="font-bold text-slate-800 flex items-center gap-2">
@@ -369,6 +380,33 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
+
+          {/* 👈 NEW: Pagination Controls Footer */}
+          {totalPages > 1 && (
+            <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500 bg-slate-50/50">
+              <div>
+                Showing <strong>{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</strong> to <strong>{Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)}</strong> of <strong>{filteredUsers.length}</strong> farmers
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition"
+                >
+                  Previous
+                </button>
+                <span className="font-bold text-slate-700">Page {currentPage} of {totalPages}</span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
     </div>
