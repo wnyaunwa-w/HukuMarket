@@ -12,7 +12,6 @@ import {
   toggleUserBlock,
   deleteUser
 } from "@/lib/db-service";
-// 👈 NEW: Added Firebase imports to read the leads
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -34,7 +33,6 @@ export default function AdminPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 25;
   
-  // 👈 NEW: Added totalLeads to the stats state
   const [stats, setStats] = useState({
     totalBirds: 0,
     totalActiveFarmers: 0, 
@@ -61,17 +59,19 @@ export default function AdminPage() {
   async function loadData() {
     setLoading(true);
     try {
-      // 👈 NEW: Fetching the leads collection at the same time
       const [usersData, batchesData, currentFee, leadsSnapshot] = await Promise.all([
         getAllUsers(),
         getAllBatches(), 
         getSubscriptionFee(),
-        getDocs(collection(db, "leads")).catch(() => ({ size: 0 })) // Fails safely if collection is empty
+        getDocs(collection(db, "leads")).catch(() => ({ size: 0, docs: [] })) 
       ]);
 
       const allUsers = usersData as any[]; 
       const allBatches = batchesData as any[];
-      const totalLeadsCount = leadsSnapshot.size || 0; // Count the total number of lead documents
+      
+      // 👈 NEW: Extract all lead data so we can map it to individual farmers
+      const leadsData = leadsSnapshot.docs ? leadsSnapshot.docs.map(doc => doc.data()) : [];
+      const totalLeadsCount = leadsData.length;
 
       const birdCount = allBatches.reduce((acc, batch) => acc + (batch.count || 0), 0);
       
@@ -80,9 +80,13 @@ export default function AdminPage() {
       
       const usersWithCounts = allUsers.map(user => {
         const userBatches = allBatches.filter(batch => batch.userId === user.id);
+        // 👈 NEW: Count how many leads belong to this specific user
+        const userLeads = leadsData.filter(lead => lead.farmerId === user.id);
+        
         return {
           ...user,
-          listingCount: userBatches.length
+          listingCount: userBatches.length,
+          leadCount: userLeads.length // Add it to the user object
         };
       });
 
@@ -95,7 +99,7 @@ export default function AdminPage() {
         payingSubs: payingFarmers.length,
         trialSubs: trialFarmers.length,
         totalRevenue: payingFarmers.length * currentFee,
-        totalLeads: totalLeadsCount // 👈 Save it to state
+        totalLeads: totalLeadsCount 
       });
 
     } catch (error) {
@@ -137,9 +141,10 @@ export default function AdminPage() {
   };
 
   const downloadCSV = () => {
-    const headers = ["Name,Email,Phone,Role,Listings,Subscription Status,Blocked Status"];
+    // 👈 UPDATED CSV: Now includes the Leads column
+    const headers = ["Name,Email,Phone,Role,Listings,Buyer Leads,Subscription Status,Blocked Status"];
     const rows = users.map(u => 
-      `"${u.displayName || ''}","${u.email || ''}","${u.phone || u.phoneNumber || 'N/A'}","${u.role || 'farmer'}","${u.listingCount || 0}","${u.subscriptionStatus || 'N/A'}","${u.isBlocked ? 'Yes' : 'No'}"`
+      `"${u.displayName || ''}","${u.email || ''}","${u.phone || u.phoneNumber || 'N/A'}","${u.role || 'farmer'}","${u.listingCount || 0}","${u.leadCount || 0}","${u.subscriptionStatus || 'N/A'}","${u.isBlocked ? 'Yes' : 'No'}"`
     );
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
     const encodedUri = encodeURI(csvContent);
@@ -178,7 +183,7 @@ export default function AdminPage() {
         <p className="text-slate-500">Overview of platform activity and settings.</p>
       </div>
 
-      {/* 📊 5-CARD STATS GRID (Adjusted for 3 columns on desktop to fit perfectly) */}
+      {/* 📊 5-CARD STATS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
         
         {/* CARD 1: Total Birds */}
@@ -210,7 +215,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* 👈 CARD 3: THE NEW BUYER LEADS CARD */}
+        {/* CARD 3: THE NEW BUYER LEADS CARD */}
         <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 hover:border-purple-200 transition-colors">
           <div className="bg-purple-50 p-3 md:p-4 rounded-xl text-purple-600 shrink-0">
             <MessageCircle size={28} className="md:w-8 md:h-8" />
@@ -373,6 +378,7 @@ export default function AdminPage() {
                   <th className="p-4">Phone</th>
                   <th className="p-4">Role</th>
                   <th className="p-4">Listings</th>
+                  <th className="p-4">Leads</th> {/* 👈 NEW COLUMN HEADER */}
                   <th className="p-4">Sub. Status</th>
                   <th className="p-4 text-center">Security Actions</th>
                 </tr>
@@ -407,6 +413,19 @@ export default function AdminPage() {
                         <span className="bg-red-50 text-red-500 font-bold px-2 py-1 rounded-lg text-xs border border-red-100">
                           0 Listings
                         </span>
+                      )}
+                    </td>
+
+                    {/* 👈 NEW COLUMN DATA: Shows how many leads this farmer got */}
+                    <td className="p-4">
+                      {user.role === 'admin' ? (
+                        <span className="text-slate-300">-</span>
+                      ) : user.leadCount > 0 ? (
+                        <span className="bg-purple-100 text-purple-700 font-bold px-2 py-1 rounded-lg text-xs flex items-center gap-1 w-fit">
+                          <MessageCircle size={12} /> {user.leadCount}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-medium text-xs">0</span>
                       )}
                     </td>
 
