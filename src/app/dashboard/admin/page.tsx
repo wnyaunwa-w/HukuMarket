@@ -12,10 +12,14 @@ import {
   toggleUserBlock,
   deleteUser
 } from "@/lib/db-service";
+// 👈 NEW: Added Firebase imports to read the leads
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
 import { 
   Loader2, Search, DollarSign, CheckCircle, 
   AlertCircle, Download, Trash2, Ban, Unlock, 
-  Bird, Users, TrendingUp, CreditCard
+  Bird, Users, TrendingUp, CreditCard, MessageCircle
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -30,12 +34,14 @@ export default function AdminPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 25;
   
+  // 👈 NEW: Added totalLeads to the stats state
   const [stats, setStats] = useState({
     totalBirds: 0,
     totalActiveFarmers: 0, 
     payingSubs: 0,
     trialSubs: 0,
-    totalRevenue: 0 
+    totalRevenue: 0,
+    totalLeads: 0
   });
   
   const [fee, setFee] = useState(5);
@@ -55,21 +61,23 @@ export default function AdminPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [usersData, batchesData, currentFee] = await Promise.all([
+      // 👈 NEW: Fetching the leads collection at the same time
+      const [usersData, batchesData, currentFee, leadsSnapshot] = await Promise.all([
         getAllUsers(),
         getAllBatches(), 
-        getSubscriptionFee()
+        getSubscriptionFee(),
+        getDocs(collection(db, "leads")).catch(() => ({ size: 0 })) // Fails safely if collection is empty
       ]);
 
       const allUsers = usersData as any[]; 
       const allBatches = batchesData as any[];
+      const totalLeadsCount = leadsSnapshot.size || 0; // Count the total number of lead documents
 
       const birdCount = allBatches.reduce((acc, batch) => acc + (batch.count || 0), 0);
       
       const payingFarmers = allUsers.filter(u => u.role === 'farmer' && u.subscriptionStatus === 'active');
       const trialFarmers = allUsers.filter(u => u.role === 'farmer' && u.subscriptionStatus === 'trial');
       
-      // 👈 NEW: Match every user to their listings so we can display the count
       const usersWithCounts = allUsers.map(user => {
         const userBatches = allBatches.filter(batch => batch.userId === user.id);
         return {
@@ -86,7 +94,8 @@ export default function AdminPage() {
         totalActiveFarmers: payingFarmers.length + trialFarmers.length,
         payingSubs: payingFarmers.length,
         trialSubs: trialFarmers.length,
-        totalRevenue: payingFarmers.length * currentFee 
+        totalRevenue: payingFarmers.length * currentFee,
+        totalLeads: totalLeadsCount // 👈 Save it to state
       });
 
     } catch (error) {
@@ -169,8 +178,8 @@ export default function AdminPage() {
         <p className="text-slate-500">Overview of platform activity and settings.</p>
       </div>
 
-      {/* 📊 4-CARD STATS GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+      {/* 📊 5-CARD STATS GRID (Adjusted for 3 columns on desktop to fit perfectly) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
         
         {/* CARD 1: Total Birds */}
         <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 hover:border-huku-orange/30 transition-colors">
@@ -201,7 +210,21 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* CARD 3: Est. Monthly Revenue */}
+        {/* 👈 CARD 3: THE NEW BUYER LEADS CARD */}
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 hover:border-purple-200 transition-colors">
+          <div className="bg-purple-50 p-3 md:p-4 rounded-xl text-purple-600 shrink-0">
+            <MessageCircle size={28} className="md:w-8 md:h-8" />
+          </div>
+          <div>
+            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase">Buyer Leads</p>
+            <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
+              {stats.totalLeads.toLocaleString()}
+            </h3>
+            <p className="text-[10px] text-slate-400 font-medium mt-1">WhatsApp inquiries sent</p>
+          </div>
+        </div>
+
+        {/* CARD 4: Est. Monthly Revenue */}
         <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 hover:border-emerald-200 transition-colors">
           <div className="bg-emerald-50 p-3 md:p-4 rounded-xl text-emerald-600 shrink-0">
             <TrendingUp size={28} className="md:w-8 md:h-8" />
@@ -215,7 +238,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* CARD 4: Monthly Subscription Fee */}
+        {/* CARD 5: Monthly Subscription Fee */}
         <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-2 hover:border-slate-300 transition-colors">
           <div className="flex items-center gap-3">
             <div className="bg-slate-50 p-3 md:p-4 rounded-xl text-slate-600 shrink-0">
@@ -349,7 +372,7 @@ export default function AdminPage() {
                   <th className="p-4">User Details</th>
                   <th className="p-4">Phone</th>
                   <th className="p-4">Role</th>
-                  <th className="p-4">Listings</th> {/* 👈 NEW COLUMN HEADER */}
+                  <th className="p-4">Listings</th>
                   <th className="p-4">Sub. Status</th>
                   <th className="p-4 text-center">Security Actions</th>
                 </tr>
@@ -373,7 +396,6 @@ export default function AdminPage() {
                       </span>
                     </td>
                     
-                    {/* 👈 NEW COLUMN DATA: Shows Red 0 or Green number */}
                     <td className="p-4">
                       {user.role === 'admin' ? (
                         <span className="text-slate-300">-</span>
