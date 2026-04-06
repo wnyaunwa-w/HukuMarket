@@ -69,7 +69,16 @@ export default function AdminPage() {
       const payingFarmers = allUsers.filter(u => u.role === 'farmer' && u.subscriptionStatus === 'active');
       const trialFarmers = allUsers.filter(u => u.role === 'farmer' && u.subscriptionStatus === 'trial');
       
-      setUsers(allUsers);
+      // 👈 NEW: Match every user to their listings so we can display the count
+      const usersWithCounts = allUsers.map(user => {
+        const userBatches = allBatches.filter(batch => batch.userId === user.id);
+        return {
+          ...user,
+          listingCount: userBatches.length
+        };
+      });
+
+      setUsers(usersWithCounts);
       setFee(currentFee);
       setNewFee(currentFee);
       setStats({
@@ -119,9 +128,9 @@ export default function AdminPage() {
   };
 
   const downloadCSV = () => {
-    const headers = ["Name,Email,Phone,Role,Subscription Status,Blocked Status"];
+    const headers = ["Name,Email,Phone,Role,Listings,Subscription Status,Blocked Status"];
     const rows = users.map(u => 
-      `"${u.displayName || ''}","${u.email || ''}","${u.phone || u.phoneNumber || 'N/A'}","${u.role || 'farmer'}","${u.subscriptionStatus || 'N/A'}","${u.isBlocked ? 'Yes' : 'No'}"`
+      `"${u.displayName || ''}","${u.email || ''}","${u.phone || u.phoneNumber || 'N/A'}","${u.role || 'farmer'}","${u.listingCount || 0}","${u.subscriptionStatus || 'N/A'}","${u.isBlocked ? 'Yes' : 'No'}"`
     );
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
     const encodedUri = encodeURI(csvContent);
@@ -169,7 +178,6 @@ export default function AdminPage() {
             <Bird size={28} className="md:w-8 md:h-8" />
           </div>
           <div>
-            {/* Removed truncate class here */}
             <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase">Total Birds</p>
             <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
               {stats.totalBirds.toLocaleString()}
@@ -183,7 +191,6 @@ export default function AdminPage() {
             <Users size={28} className="md:w-8 md:h-8" />
           </div>
           <div className="z-10">
-            {/* Removed truncate class here */}
             <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase">Active Farmers</p>
             <div className="flex items-baseline gap-1">
               <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">{stats.totalActiveFarmers}</h3>
@@ -200,7 +207,6 @@ export default function AdminPage() {
             <TrendingUp size={28} className="md:w-8 md:h-8" />
           </div>
           <div>
-            {/* Removed truncate class here */}
             <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase">Est. Revenue</p>
             <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
               {stats.totalRevenue === 0 ? "$0" : `$${stats.totalRevenue}`}
@@ -216,7 +222,6 @@ export default function AdminPage() {
               <CreditCard size={28} className="md:w-8 md:h-8" />
             </div>
             <div>
-              {/* Removed truncate class here - text will flow naturally */}
               <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase whitespace-nowrap">Monthly Fee</p>
                {isEditingFee ? (
                  <div className="flex items-center gap-1 mt-1">
@@ -344,6 +349,7 @@ export default function AdminPage() {
                   <th className="p-4">User Details</th>
                   <th className="p-4">Phone</th>
                   <th className="p-4">Role</th>
+                  <th className="p-4">Listings</th> {/* 👈 NEW COLUMN HEADER */}
                   <th className="p-4">Sub. Status</th>
                   <th className="p-4 text-center">Security Actions</th>
                 </tr>
@@ -366,6 +372,22 @@ export default function AdminPage() {
                         {(user.role || 'FARMER').toUpperCase()}
                       </span>
                     </td>
+                    
+                    {/* 👈 NEW COLUMN DATA: Shows Red 0 or Green number */}
+                    <td className="p-4">
+                      {user.role === 'admin' ? (
+                        <span className="text-slate-300">-</span>
+                      ) : user.listingCount > 0 ? (
+                        <span className="bg-green-100 text-green-700 font-bold px-2 py-1 rounded-lg text-xs">
+                          {user.listingCount} Active
+                        </span>
+                      ) : (
+                        <span className="bg-red-50 text-red-500 font-bold px-2 py-1 rounded-lg text-xs border border-red-100">
+                          0 Listings
+                        </span>
+                      )}
+                    </td>
+
                     <td className="p-4">
                       {user.role !== 'admin' ? (
                         <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold w-fit ${user.subscriptionStatus === 'active' ? 'bg-green-100 text-green-700' : (user.subscriptionStatus === 'trial' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-500')}`}>
