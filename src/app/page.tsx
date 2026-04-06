@@ -3,6 +3,9 @@
 import { useEffect, useState, Suspense, Fragment } from "react"; 
 import { Navbar } from "@/components/Navbar";
 import { getAllBatches, Batch, getActiveAds, Ad } from "@/lib/db-service"; 
+// 👈 NEW: Added Firebase imports for Lead Tracking
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { ListingCard } from "@/components/ListingCard";
 import { ContactModal } from "@/components/ContactModal";
 import { SponsoredAdCard } from "@/components/SponsoredAdCard"; 
@@ -55,6 +58,27 @@ function MarketContent() {
     }
   }, [loading, highlightId]);
 
+  // 👈 NEW: The function that secretly logs the lead before showing the contact info
+  const handleContactClick = async (batch: Batch) => {
+    // Open the modal immediately for the user experience
+    setSelectedBatch(batch);
+    
+    // Silently log the lead in the background
+    try {
+      await addDoc(collection(db, "leads"), {
+        batchId: batch.id,
+        farmerId: batch.userId,
+        timestamp: new Date().toISOString(),
+        action: "viewed_contact",
+        type: "marketplace_click"
+      });
+      console.log("Lead tracked successfully.");
+    } catch (error) {
+      // If tracking fails, we just ignore it so it doesn't interrupt the buyer
+      console.error("Failed to track lead:", error);
+    }
+  };
+
   const filteredBatches = batches.filter(batch => 
     batch.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (batch.breed || "").toLowerCase().includes(searchTerm.toLowerCase())
@@ -81,7 +105,6 @@ function MarketContent() {
       question: "Do you offer delivery services?",
       answer: "HukuMarket itself does not offer transport. However, many farmers on our platform are willing to deliver for a fee. Check the specific listing description or ask the farmer when you call."
     },
-    // 👈 NEW FAQ ADDED HERE
     {
       question: "Do you have a mobile app? How do I install it?",
       answer: "Yes! You can install HukuMarket directly to your phone without taking up storage space. On Android (using Chrome), tap the 3 dots in the top right corner and select 'Install App' or 'Add to Home Screen'. On iPhone (using Safari), tap the Share button at the bottom and select 'Add to Home Screen'."
@@ -145,7 +168,6 @@ function MarketContent() {
             {filteredBatches.map((batch, index) => {
               
               // 📢 DYNAMIC AD INJECTION
-              // 👇 Change this number to control how often ads appear
               const AD_FREQUENCY = 4; 
               
               const isAdSpot = (index + 1) % AD_FREQUENCY === 0;
@@ -154,8 +176,8 @@ function MarketContent() {
 
               return (
                 <Fragment key={`wrapper-${batch.id}`}>
-                  {/* The Listing */}
-                  <ListingCard batch={batch} onContact={(b) => setSelectedBatch(b)} />
+                  {/* 👈 UPDATED: Now uses our new handleContactClick tracker! */}
+                  <ListingCard batch={batch} onContact={() => handleContactClick(batch)} />
                   
                   {/* The Dynamic Ad */}
                   {adToShow && (
