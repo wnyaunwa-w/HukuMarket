@@ -20,7 +20,8 @@ import {
   Heart,
   Megaphone,
   Users,
-  BadgeCheck // 👈 Added BadgeCheck icon import
+  BadgeCheck,
+  ClipboardList // 👈 Added the ClipboardList icon import
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -38,13 +39,14 @@ import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-// 👈 Updated menuItems to include 'Verify Badge'
+// 👈 Updated menuItems to include 'Huku Management'
 const menuItems = [
   { href: '/dashboard', label: 'Overview', icon: Home },
   { href: '/dashboard/favorites', label: 'Saved Farms', icon: Heart },
   { href: '/dashboard/profile', label: 'Profile', icon: UserCircle },
   { href: '/dashboard/listings', label: 'My Listings', icon: LayoutGrid },
   { href: '/dashboard/listings/new', label: 'Create Listing', icon: PlusCircle },
+  { href: '/dashboard/management', label: 'Huku Management', icon: ClipboardList }, // 👈 NEW ITEM
   { href: '/dashboard/verify', label: 'Verify Badge', icon: BadgeCheck }, 
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
