@@ -199,9 +199,9 @@ export default function ManagementTool() {
               <p className="text-sm text-slate-600 mb-4">
                 Enter your expected selling price per bird to calculate your final margins.
               </p>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input type="number" placeholder="Selling Price ($)" className="flex-1 p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-huku-orange" />
-                <button className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800">
+                <button className="w-full sm:w-auto bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800 transition">
                   Calculate
                 </button>
               </div>
