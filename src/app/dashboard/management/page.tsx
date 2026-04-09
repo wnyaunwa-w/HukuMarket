@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { createFlock, updateFlock, getActiveFlocks, addDailyLog, getFlockLogs } from "@/lib/db-service";
+import { createFlock, updateFlock, getActiveFlocks, addDailyLog, getFlockLogs, uploadMortalityPhoto } from "@/lib/db-service";
 import { 
   Calculator, Activity, Calendar, DollarSign, 
   AlertTriangle, Camera, Scale, Save, Loader2, 
@@ -28,9 +28,13 @@ export default function ManagementTool() {
   const [setupData, setSetupData] = useState(defaultSetup);
 
   const defaultLog = {
-    feedStage: "Starter", feedQuantity: "", sampleWeight: "", mortalityCount: "", hasPhotoEvidence: false
+    feedStage: "Starter", feedQuantity: "", sampleWeight: "", mortalityCount: "", hasPhotoEvidence: false, photoUrl: ""
   };
   const [logData, setLogData] = useState(defaultLog);
+
+  // Photo Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [sellingPrice, setSellingPrice] = useState("");
   const [estProfit, setEstProfit] = useState<number | null>(null);
@@ -57,7 +61,6 @@ export default function ManagementTool() {
     
     const flock = flocksList.find(f => f.id === flockId);
     if (flock) {
-      // Pre-fill setup tab so it can be edited
       setSetupData({
         name: flock.name || "", breed: flock.breed || "Broiler - Cobb 500", 
         placementDate: flock.placementDate || "", vaccineStart: flock.vaccineStart || "",
@@ -97,12 +100,10 @@ export default function ManagementTool() {
       };
       
       if (selectedFlockId) {
-        // Edit existing flock
         await updateFlock(selectedFlockId, numericData);
         setActiveFlocks(activeFlocks.map(f => f.id === selectedFlockId ? { ...f, ...numericData } : f));
         alert("Batch details updated!");
       } else {
-        // Create new flock
         const newFlock = await createFlock(currentUser.uid, numericData);
         setActiveFlocks([...activeFlocks, newFlock]);
         setSelectedFlockId(newFlock.id);
@@ -113,6 +114,23 @@ export default function ManagementTool() {
       alert("Failed to save batch.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // 📸 NEW: Handle actual camera upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedFlockId) return;
+
+    setUploadingImage(true);
+    try {
+      const url = await uploadMortalityPhoto(file, selectedFlockId);
+      setLogData({ ...logData, photoUrl: url, hasPhotoEvidence: true });
+    } catch (error) {
+      console.error("Upload failed", error);
+      alert("Failed to upload image. Please check your connection and try again.");
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -133,7 +151,6 @@ export default function ManagementTool() {
       const updatedLogs = await getFlockLogs(selectedFlockId);
       setLogs(updatedLogs);
       
-      // WhatsApp Share Prompt
       if (confirm("Daily record saved! Would you like to share this report via WhatsApp?")) {
         shareToWhatsApp(numericLog, updatedLogs.length);
       }
@@ -150,9 +167,10 @@ export default function ManagementTool() {
     const flock = activeFlocks.find(f => f.id === selectedFlockId);
     if (!flock) return;
 
-    const photoNote = log.hasPhotoEvidence ? "(Photo Evidence Attached in Chat)" : "";
+    // 👈 NEW: Add the actual clickable image link to the WhatsApp message
+    const photoNote = log.photoUrl ? `\n*Photo Evidence:* ${log.photoUrl}` : "";
     
-    const text = `🐔 *Daily Farm Report*\nBatch: ${flock.name}\nDay: ${currentDay}\n\n*Mortality:* ${log.mortalityCount} ${photoNote}\n*Feed Stage:* ${log.feedStage}\n*Feed Consumed:* ${log.feedQuantity}kg\n*Avg Weight:* ${log.sampleWeight}g\n\n_Sent via HukuMarket Management_`;
+    const text = `🐔 *Daily Farm Report*\nBatch: ${flock.name}\nDay: ${currentDay}\n\n*Mortality:* ${log.mortalityCount}${photoNote}\n*Feed Stage:* ${log.feedStage}\n*Feed Consumed:* ${log.feedQuantity}kg\n*Avg Weight:* ${log.sampleWeight}g\n\n_Sent via HukuMarket Management_`;
 
     if (navigator.share) {
       navigator.share({ title: 'Farm Report', text: text }).catch(console.error);
@@ -170,7 +188,6 @@ export default function ManagementTool() {
   const mortalityRate = ((totalMortality / initialChicks) * 100).toFixed(1);
   const survivingBirds = initialChicks - totalMortality;
 
-  // FCR Calculation: Total Feed Consumed / Total Weight Gained (simplified approximation for UI)
   const latestWeightGrams = logs.length > 0 ? logs[logs.length - 1].sampleWeight : 0;
   const latestWeightKg = latestWeightGrams / 1000;
   const estTotalWeightGain = survivingBirds * latestWeightKg;
@@ -186,7 +203,6 @@ export default function ManagementTool() {
         <p className="text-slate-500">Track your flock, manage costs, and calculate profits.</p>
       </div>
 
-      {/* 🟢 BATCH SELECTOR (NEW) */}
       <div className="flex items-center gap-3 overflow-x-auto pb-2 hide-scrollbar">
         {activeFlocks.map(flock => (
           <button 
@@ -325,17 +341,34 @@ export default function ManagementTool() {
                   <input type="number" value={logData.mortalityCount} onChange={e => setLogData({...logData, mortalityCount: e.target.value})} placeholder="0" className="w-full p-3 bg-white border border-red-200 rounded-xl mt-1 outline-none text-red-600 font-bold" />
                 </div>
                 
-                <button 
-                  onClick={() => setLogData({...logData, hasPhotoEvidence: !logData.hasPhotoEvidence})}
-                  className={`w-full mt-1 p-3 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 transition ${logData.hasPhotoEvidence ? 'border-green-400 bg-green-50 text-green-700' : 'border-red-200 bg-white text-red-400 hover:bg-red-50'}`}
-                >
-                  {logData.hasPhotoEvidence ? <CheckCircle size={20} /> : <Camera size={20} />}
-                  <span className="text-xs font-bold">{logData.hasPhotoEvidence ? "Photo Attached to Report" : "Attach Photo Evidence"}</span>
-                </button>
+                <div>
+                  <label className="text-xs font-bold text-red-800 uppercase flex items-center gap-2">
+                    <Camera size={14} /> Mortality Photo Evidence
+                  </label>
+                  {/* 📸 NEW: Hidden file input to trigger the device camera */}
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    capture="environment" // Forces the rear camera to open on mobile
+                    className="hidden" 
+                    ref={fileInputRef} 
+                    onChange={handleImageUpload} 
+                  />
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    className={`w-full mt-1 p-3 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 transition ${logData.hasPhotoEvidence ? 'border-green-400 bg-green-50 text-green-700' : 'border-red-200 bg-white text-red-400 hover:bg-red-50'} disabled:opacity-50`}
+                  >
+                    {uploadingImage ? <Loader2 size={20} className="animate-spin" /> : logData.hasPhotoEvidence ? <CheckCircle size={20} /> : <Camera size={20} />}
+                    <span className="text-xs font-bold">
+                      {uploadingImage ? "Uploading Photo..." : logData.hasPhotoEvidence ? "Photo Attached (Ready to Share)" : "Tap to Take Photo"}
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            <button onClick={handleSaveLog} disabled={saving} className="mt-6 w-full bg-huku-orange text-white px-6 py-4 rounded-xl font-bold shadow-md hover:bg-orange-600 transition flex items-center justify-center gap-2 disabled:opacity-50">
+            <button onClick={handleSaveLog} disabled={saving || uploadingImage} className="mt-6 w-full bg-huku-orange text-white px-6 py-4 rounded-xl font-bold shadow-md hover:bg-orange-600 transition flex items-center justify-center gap-2 disabled:opacity-50">
               {saving ? <Loader2 className="animate-spin" /> : <Save size={18} />} Save & Share Report
             </button>
           </div>

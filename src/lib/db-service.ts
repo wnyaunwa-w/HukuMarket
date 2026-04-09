@@ -14,7 +14,7 @@ import {
   updateDoc,      
   runTransaction,
   deleteDoc,
-  increment // 👈 Moved this to the top where it belongs!
+  increment 
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -508,6 +508,7 @@ export async function trackBuyerInquiry(batchId: string) {
     console.error("Failed to track inquiry:", error);
   }
 }
+
 // ==========================================
 // HUKU MANAGEMENT (FLOCKS & LOGS)
 // ==========================================
@@ -527,7 +528,6 @@ export async function createFlock(userId: string, flockData: any) {
   }
 }
 
-// 👈 NEW: Allow editing existing flock details
 export async function updateFlock(flockId: string, flockData: any) {
   try {
     await updateDoc(doc(db, "flocks", flockId), flockData);
@@ -537,7 +537,6 @@ export async function updateFlock(flockId: string, flockData: any) {
   }
 }
 
-// 👈 UPDATED: Now returns an ARRAY of active flocks so farmers can have more than one
 export async function getActiveFlocks(userId: string) {
   try {
     const q = query(collection(db, "flocks"), where("userId", "==", userId), where("status", "==", "active"));
@@ -564,7 +563,6 @@ export async function addDailyLog(flockId: string, logData: any) {
 
 export async function getFlockLogs(flockId: string) {
   try {
-    // We order them by timestamp so Day 1, Day 2, etc. stay in order
     const q = query(collection(db, "flock_logs"), where("flockId", "==", flockId));
     const snapshot = await getDocs(q);
     const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -572,5 +570,22 @@ export async function getFlockLogs(flockId: string) {
   } catch (error) {
     console.error("Error getting logs", error);
     return [];
+  }
+}
+
+// 📸 UPLOAD MORTALITY PHOTO (NEW!)
+export async function uploadMortalityPhoto(file: File, flockId: string) {
+  try {
+    const fileExt = file.name.split('.').pop();
+    // Creates a unique filename: mortality_evidence/flockId/123456789.jpg
+    const fileName = `mortality_evidence/${flockId}/${Date.now()}.${fileExt}`;
+    const storageRef = ref(storage, fileName);
+
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+  } catch (error) {
+    console.error("Error uploading photo", error);
+    throw error;
   }
 }
