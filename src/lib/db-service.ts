@@ -508,3 +508,57 @@ export async function trackBuyerInquiry(batchId: string) {
     console.error("Failed to track inquiry:", error);
   }
 }
+// ==========================================
+// HUKU MANAGEMENT (FLOCKS & LOGS)
+// ==========================================
+
+export async function createFlock(userId: string, flockData: any) {
+  try {
+    const docRef = await addDoc(collection(db, "flocks"), {
+      userId,
+      ...flockData,
+      status: 'active',
+      createdAt: new Date().toISOString()
+    });
+    return { id: docRef.id, userId, ...flockData, status: 'active' };
+  } catch (error) {
+    console.error("Error creating flock", error);
+    throw error;
+  }
+}
+
+export async function getActiveFlock(userId: string) {
+  try {
+    const q = query(collection(db, "flocks"), where("userId", "==", userId), where("status", "==", "active"));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+  } catch (error) {
+    console.error("Error getting flock", error);
+    return null;
+  }
+}
+
+export async function addDailyLog(flockId: string, logData: any) {
+  try {
+    await addDoc(collection(db, "flock_logs"), {
+      flockId,
+      timestamp: new Date().toISOString(),
+      ...logData
+    });
+  } catch (error) {
+    console.error("Error adding log", error);
+    throw error;
+  }
+}
+
+export async function getFlockLogs(flockId: string) {
+  try {
+    const q = query(collection(db, "flock_logs"), where("flockId", "==", flockId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error getting logs", error);
+    return [];
+  }
+}
