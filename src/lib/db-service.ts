@@ -30,8 +30,8 @@ export interface Batch {
   location: string;
   pricePerBird: number;
   createdAt: any;
-  inquiries?: number; // 👈 ADDED FOR ANALYTICS
-  soldCount?: number; // 👈 ADDED FOR ANALYTICS
+  inquiries?: number; 
+  soldCount?: number; 
 }
 
 // 1. Create Batch
@@ -87,21 +87,16 @@ export async function getAllBatches() {
     const allBatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Batch[];
 
     const now = new Date();
-    const EXPIRY_DAYS = 31; // 👈 Listings automatically vanish from the market after 31 days
+    const EXPIRY_DAYS = 31;
 
-    // THE DOUBLE FILTER (Zero-Stock & Ghost Listings)
     return allBatches.filter(batch => {
-      // Rule 1: Hide if stock is 0
       if (batch.count <= 0) return false;
-
-      // Rule 2: Hide if it's a Ghost Listing (older than 31 days)
       if (batch.createdAt?.toDate) {
         const createdDate = batch.createdAt.toDate();
         const diffDays = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
         if (diffDays > EXPIRY_DAYS) return false;
       }
-
-      return true; // Keep it on the public market!
+      return true; 
     });
 
   } catch (error) {
@@ -180,7 +175,7 @@ export async function updateBatchStock(batchId: string, soldAmount: number) {
 
       transaction.update(batchRef, { 
         count: currentCount - soldAmount,
-        soldCount: increment(soldAmount) // Automatically tracks sold amount for analytics
+        soldCount: increment(soldAmount) 
       });
     });
     return true;
@@ -239,7 +234,6 @@ export async function getAllUsers() {
 
 // ❤️ FAVORITES SYSTEM
 
-// Toggle Favorite status
 export async function toggleFavorite(userId: string, batchId: string) {
   if (!userId) throw new Error("User ID is required");
 
@@ -258,7 +252,6 @@ export async function toggleFavorite(userId: string, batchId: string) {
   }
 }
 
-// Get all favorited batch IDs for a user
 export async function getFavoriteIds(userId: string): Promise<string[]> {
   if (!userId) return []; 
 
@@ -267,7 +260,6 @@ export async function getFavoriteIds(userId: string): Promise<string[]> {
   return snapshot.docs.map(doc => doc.id);
 }
 
-// Get full batch details for favorites
 export async function getFavoriteBatches(userId: string): Promise<Batch[]> {
   if (!userId) return []; 
 
@@ -280,19 +272,17 @@ export async function getFavoriteBatches(userId: string): Promise<Batch[]> {
 
 // ⚙️ GLOBAL SETTINGS & ADMIN ACTIONS
 
-// Get the current subscription fee (defaults to 5 if not set)
 export async function getSubscriptionFee() {
   try {
     const docRef = doc(db, "settings", "general");
     const snap = await getDoc(docRef);
-    return snap.exists() ? snap.data().subscriptionFee : 5; // Default $5
+    return snap.exists() ? snap.data().subscriptionFee : 5; 
   } catch (error) {
     console.error("Error fetching fee:", error);
     return 5;
   }
 }
 
-// Update the subscription fee
 export async function updateSubscriptionFee(newFee: number) {
   try {
     const docRef = doc(db, "settings", "general");
@@ -304,17 +294,13 @@ export async function updateSubscriptionFee(newFee: number) {
   }
 }
 
-// ✅ ACTIVATE USER (Updated with Expiry Calculation)
 export async function activateUserSubscription(userId: string) {
   try {
     const userRef = doc(db, "users", userId);
-    
-    // 1. Calculate dates
     const startDate = new Date();
     const expiryDate = new Date();
-    expiryDate.setDate(startDate.getDate() + 30); // Add 30 days
+    expiryDate.setDate(startDate.getDate() + 30); 
     
-    // 2. Save to database
     await updateDoc(userRef, { 
       subscriptionStatus: 'active',
       subscriptionStartDate: startDate.toISOString(),
@@ -327,7 +313,6 @@ export async function activateUserSubscription(userId: string) {
   }
 }
 
-// 🛑 DEACTIVATE USER
 export async function deactivateUserSubscription(userId: string) {
   try {
     const userRef = doc(db, "users", userId);
@@ -339,13 +324,10 @@ export async function deactivateUserSubscription(userId: string) {
   }
 }
 
-// 🚫 BLOCK/UNBLOCK USER
 export async function toggleUserBlock(userId: string, isBlocked: boolean) {
   try {
     const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, { 
-      isBlocked: !isBlocked 
-    });
+    await updateDoc(userRef, { isBlocked: !isBlocked });
     return !isBlocked;
   } catch (error) {
     console.error("Error toggling block:", error);
@@ -353,14 +335,10 @@ export async function toggleUserBlock(userId: string, isBlocked: boolean) {
   }
 }
 
-// 🛡️ VERIFICATION SYSTEM (Admin Only)
-// Verify or Unverify a Farmer
 export async function toggleUserVerification(userId: string, isVerified: boolean) {
   try {
     const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, { 
-      isVerified: isVerified 
-    });
+    await updateDoc(userRef, { isVerified: isVerified });
     return true;
   } catch (error) {
     console.error("Error toggling verification:", error);
@@ -368,22 +346,17 @@ export async function toggleUserVerification(userId: string, isVerified: boolean
   }
 }
 
-// 🗑️ DELETE USER & ALL THEIR LISTINGS
 export async function deleteUser(userId: string) {
   try {
-    // 1. Find all listings (batches) belonging to this user
     const batchesQuery = query(collection(db, "batches"), where("userId", "==", userId));
     const batchesSnapshot = await getDocs(batchesQuery);
     
-    // 2. Delete every single batch we found
     const deletePromises = batchesSnapshot.docs.map(batchDoc => 
       deleteDoc(doc(db, "batches", batchDoc.id))
     );
-    await Promise.all(deletePromises); // Runs all deletions at the same time
+    await Promise.all(deletePromises); 
 
-    // 3. Finally, delete the User Profile itself
     await deleteDoc(doc(db, "users", userId));
-    
     return true;
   } catch (error) {
     console.error("Error deleting user and their listings:", error);
@@ -407,7 +380,6 @@ export interface Ad {
   endDate?: string;
 }
 
-// ✅ Generic Function to Upload Ad Assets (Banner or Logo)
 export async function uploadAdAsset(file: File, path: 'banners' | 'logos') {
   try {
     const fileExtension = file.name.split('.').pop();
@@ -421,64 +393,47 @@ export async function uploadAdAsset(file: File, path: 'banners' | 'logos') {
   }
 }
 
-// 1. Fetch all ACTIVE ads (Smart Filter: Hides Expired Ads)
 export async function getActiveAds(type: 'dashboard_banner' | 'feed_card'): Promise<Ad[]> {
-  const q = query(
-    collection(db, "ads"), 
-    where("active", "==", true),
-    where("type", "==", type)
-  );
-  
+  const q = query(collection(db, "ads"), where("active", "==", true), where("type", "==", type));
   const snapshot = await getDocs(q);
   const now = new Date();
 
   return snapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() } as Ad))
     .filter(ad => {
-      // If dates are set, strictly enforce them
-      if (ad.startDate && new Date(ad.startDate) > now) return false; // Scheduled for future
-      if (ad.endDate && new Date(ad.endDate) < now) return false;     // Expired
-      
-      return true; // Valid
+      if (ad.startDate && new Date(ad.startDate) > now) return false; 
+      if (ad.endDate && new Date(ad.endDate) < now) return false;     
+      return true; 
     });
 }
 
-// 2. Create an Ad (For Admin)
 export async function createAd(adData: Omit<Ad, "id">) {
   return await addDoc(collection(db, "ads"), adData);
 }
 
-// 3. Fetch ALL ads (Active & Inactive - For Admin Panel)
 export async function getAllAds() {
   const q = query(collection(db, "ads"));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ad));
 }
 
-// 4. Toggle Ad Status
 export async function toggleAdStatus(adId: string, currentStatus: boolean) {
   const ref = doc(db, "ads", adId);
   await updateDoc(ref, { active: !currentStatus });
 }
 
-// 5. Delete Ad
 export async function deleteAd(adId: string) {
   await deleteDoc(doc(db, "ads", adId));
 }
 
-// 🧹 ADMIN UTILITY: Clean up orphaned batches (Listings with no matching user)
 export async function cleanUpOrphanedBatches() {
   try {
-    // 1. Get all active users
     const usersSnap = await getDocs(collection(db, "users"));
     const validUserIds = new Set(usersSnap.docs.map(doc => doc.id));
-
-    // 2. Get all batches
     const batchesSnap = await getDocs(collection(db, "batches"));
     let deletedCount = 0;
     const deletePromises: Promise<void>[] = [];
 
-    // 3. Check every batch. If the user doesn't exist, queue it for deletion.
     batchesSnap.docs.forEach(batchDoc => {
       const batchData = batchDoc.data();
       if (!validUserIds.has(batchData.userId)) {
@@ -487,7 +442,6 @@ export async function cleanUpOrphanedBatches() {
       }
     });
 
-    // 4. Execute all deletions
     await Promise.all(deletePromises);
     return deletedCount;
   } catch (error) {
@@ -496,14 +450,11 @@ export async function cleanUpOrphanedBatches() {
   }
 }
 
-// 📈 TRACK BUYER INQUIRY
 export async function trackBuyerInquiry(batchId: string) {
   if (!batchId) return;
   try {
     const batchRef = doc(db, "batches", batchId);
-    await updateDoc(batchRef, {
-      inquiries: increment(1)
-    });
+    await updateDoc(batchRef, { inquiries: increment(1) });
   } catch (error) {
     console.error("Failed to track inquiry:", error);
   }
@@ -573,19 +524,66 @@ export async function getFlockLogs(flockId: string) {
   }
 }
 
-// 📸 UPLOAD MORTALITY PHOTO (NEW!)
+// 🛠️ NEW: Native HTML5 Client-Side Image Compressor
+function compressImage(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        // Max dimensions for a mobile screen viewing a simple photo
+        const MAX_WIDTH = 800; 
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // 0.6 quality reduces a 5MB image to roughly 150KB!
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Canvas compression failed'));
+        }, 'image/jpeg', 0.6); 
+      };
+      img.onerror = (error) => reject(error);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+}
+
+// 📸 UPLOAD MORTALITY PHOTO (Now with built-in compression!)
 export async function uploadMortalityPhoto(file: File, flockId: string) {
   try {
-    const fileExt = file.name.split('.').pop();
-    // Creates a unique filename: mortality_evidence/flockId/123456789.jpg
-    const fileName = `mortality_evidence/${flockId}/${Date.now()}.${fileExt}`;
+    // 1. Squash the massive 5MB photo down to ~150KB
+    const compressedBlob = await compressImage(file);
+    
+    // 2. Upload the tiny version to Firebase
+    const fileName = `mortality_evidence/${flockId}/${Date.now()}.jpg`; // Force JPG extension
     const storageRef = ref(storage, fileName);
 
-    await uploadBytes(storageRef, file);
+    await uploadBytes(storageRef, compressedBlob);
     const downloadURL = await getDownloadURL(storageRef);
     return downloadURL;
   } catch (error) {
-    console.error("Error uploading photo", error);
+    console.error("Error uploading compressed photo", error);
     throw error;
   }
 }
