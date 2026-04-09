@@ -527,15 +527,25 @@ export async function createFlock(userId: string, flockData: any) {
   }
 }
 
-export async function getActiveFlock(userId: string) {
+// 👈 NEW: Allow editing existing flock details
+export async function updateFlock(flockId: string, flockData: any) {
+  try {
+    await updateDoc(doc(db, "flocks", flockId), flockData);
+  } catch (error) {
+    console.error("Error updating flock", error);
+    throw error;
+  }
+}
+
+// 👈 UPDATED: Now returns an ARRAY of active flocks so farmers can have more than one
+export async function getActiveFlocks(userId: string) {
   try {
     const q = query(collection(db, "flocks"), where("userId", "==", userId), where("status", "==", "active"));
     const snapshot = await getDocs(q);
-    if (snapshot.empty) return null;
-    return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
-    console.error("Error getting flock", error);
-    return null;
+    console.error("Error getting flocks", error);
+    return [];
   }
 }
 
@@ -554,9 +564,11 @@ export async function addDailyLog(flockId: string, logData: any) {
 
 export async function getFlockLogs(flockId: string) {
   try {
+    // We order them by timestamp so Day 1, Day 2, etc. stay in order
     const q = query(collection(db, "flock_logs"), where("flockId", "==", flockId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return logs.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   } catch (error) {
     console.error("Error getting logs", error);
     return [];
