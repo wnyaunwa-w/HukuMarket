@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { LayoutGrid, ShoppingBag, LogOut, PlusCircle } from "lucide-react";
+// 👈 NEW: Added ClipboardList icon
+import { LayoutGrid, ShoppingBag, LogOut, PlusCircle, ClipboardList } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 
 export function Navbar() {
@@ -14,7 +15,6 @@ export function Navbar() {
         {/* Logo Section */}
         <Link href="/" className="flex items-center space-x-1.5 font-black text-huku-orange shrink-0">
           <span className="text-2xl">🐔</span>
-          {/* UPDATED: Removed 'hidden' class so text shows on mobile too. Added text-lg for mobile sizing. */}
           <span className="text-lg md:text-xl tracking-tight">HukuMarket</span>
         </Link>
 
@@ -39,8 +39,14 @@ export function Navbar() {
                 <LayoutGrid size={20} />
                 <span className="hidden md:inline">Dashboard</span>
               </Link>
+
+              {/* 👈 NEW: Huku Management Link */}
+              <Link href="/dashboard/management" className="text-slate-600 hover:text-huku-orange flex items-center gap-2 font-medium transition-colors">
+                <ClipboardList size={20} />
+                <span className="hidden md:inline">Management</span>
+              </Link>
               
-              {/* Sell Button - Made slightly more compact on mobile */}
+              {/* Sell Button */}
               <Link href="/dashboard/listings/new" className="flex items-center gap-1 bg-huku-orange text-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-bold hover:bg-huku-orange/90 transition shadow-md shadow-huku-orange/20 whitespace-nowrap">
                 <PlusCircle size={16} />
                 <span>Sell</span>
