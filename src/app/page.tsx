@@ -9,6 +9,7 @@ import { db } from "@/lib/firebase";
 import { ListingCard } from "@/components/ListingCard";
 import { ContactModal } from "@/components/ContactModal";
 import { SponsoredAdCard } from "@/components/SponsoredAdCard"; 
+import { FloatingWhatsApp } from "@/components/FloatingWhatsApp"; // 👈 NEW: Floating WhatsApp Import
 import { Loader2, Search, MapPin, HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
@@ -58,7 +59,7 @@ function MarketContent() {
     }
   }, [loading, highlightId]);
 
-  // 👈 NEW: The function that secretly logs the lead before showing the contact info
+  // The function that secretly logs the lead before showing the contact info
   const handleContactClick = async (batch: Batch) => {
     // Open the modal immediately for the user experience
     setSelectedBatch(batch);
@@ -176,7 +177,6 @@ function MarketContent() {
 
               return (
                 <Fragment key={`wrapper-${batch.id}`}>
-                  {/* 👈 UPDATED: Now uses our new handleContactClick tracker! */}
                   <ListingCard batch={batch} onContact={() => handleContactClick(batch)} />
                   
                   {/* The Dynamic Ad */}
@@ -271,6 +271,8 @@ export default function Home() {
       <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className="animate-spin text-huku-orange" /></div>}>
         <MarketContent />
       </Suspense>
+      {/* 👈 NEW: The Floating WhatsApp CTA placed inside the main wrapper */}
+      <FloatingWhatsApp />
     </div>
   );
 }
