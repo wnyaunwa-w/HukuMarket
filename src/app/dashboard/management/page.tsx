@@ -6,8 +6,67 @@ import { createFlock, updateFlock, getActiveFlocks, addDailyLog, getFlockLogs, u
 import { 
   Calculator, Activity, Calendar, DollarSign, 
   AlertTriangle, Camera, Scale, Save, Loader2, 
-  CheckCircle, Share2, Plus, Bird
+  CheckCircle, Share2, Plus, Bird, Clock 
 } from "lucide-react";
+
+// 🕒 NEW: Maturity Progress Card Component
+function MaturityCard({ placementDate, breed = "Broiler" }: { placementDate: string, breed?: string }) {
+  if (!placementDate) return null;
+
+  // Standard target maturity days
+  const targetDays = breed.toLowerCase().includes("roadrunner") ? 120 : 42; 
+  
+  // Calculate current age
+  const placement = new Date(placementDate);
+  const today = new Date();
+  const diffTime = today.getTime() - placement.getTime();
+  const currentAgeDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+  
+  // Calculate remaining days and progress
+  const daysLeft = Math.max(0, targetDays - currentAgeDays);
+  const progressPercent = Math.min(100, (currentAgeDays / targetDays) * 100);
+  const isReady = daysLeft === 0;
+
+  return (
+    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+      <div className="absolute -right-4 -top-4 opacity-5 text-huku-orange">
+        <Clock size={120} />
+      </div>
+
+      <div className="relative z-10">
+        <div className="flex items-center gap-2 mb-2">
+          <Calendar size={16} className="text-slate-400" />
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Growth Tracker</p>
+        </div>
+        
+        <div className="flex items-baseline gap-2 mb-4">
+          <h3 className="text-4xl font-black text-slate-800">Day {currentAgeDays}</h3>
+          <p className="text-slate-500 font-medium">of {targetDays} days</p>
+        </div>
+
+        <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden mb-3">
+          <div 
+            className={`h-full transition-all duration-1000 rounded-full ${
+              isReady ? 'bg-green-500' : 'bg-huku-orange'
+            }`}
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
+        {isReady ? (
+          <div className="flex items-center gap-2 text-green-700 font-bold bg-green-50 p-3 rounded-xl border border-green-100 mt-4">
+            <CheckCircle size={20} />
+            <span>Market Ready! Time to list these birds.</span>
+          </div>
+        ) : (
+          <p className="text-sm font-bold text-slate-600">
+            <span className="text-huku-orange">{daysLeft} days</span> until market ready
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ManagementTool() {
   const { currentUser } = useAuth();
@@ -117,7 +176,6 @@ export default function ManagementTool() {
     }
   };
 
-  // 📸 NEW: Handle actual camera upload
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedFlockId) return;
@@ -167,7 +225,6 @@ export default function ManagementTool() {
     const flock = activeFlocks.find(f => f.id === selectedFlockId);
     if (!flock) return;
 
-    // 👈 NEW: Add the actual clickable image link to the WhatsApp message
     const photoNote = log.photoUrl ? `\n*Photo Evidence:* ${log.photoUrl}` : "";
     
     const text = `🐔 *Daily Farm Report*\nBatch: ${flock.name}\nDay: ${currentDay}\n\n*Mortality:* ${log.mortalityCount}${photoNote}\n*Feed Stage:* ${log.feedStage}\n*Feed Consumed:* ${log.feedQuantity}kg\n*Avg Weight:* ${log.sampleWeight}g\n\n_Sent via HukuMarket Management_`;
@@ -179,7 +236,6 @@ export default function ManagementTool() {
     }
   };
 
-  // Math Variables
   const currentFlock = activeFlocks.find(f => f.id === selectedFlockId);
   const totalInputCosts = currentFlock ? (currentFlock.costChicks + currentFlock.costFeed + currentFlock.costHeating + currentFlock.costBedding + currentFlock.costLabour) : 0;
   const totalMortality = logs.reduce((sum, log) => sum + (log.mortalityCount || 0), 0);
@@ -249,14 +305,14 @@ export default function ManagementTool() {
             <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
               <Calendar className="text-blue-500" /> Basic Information
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Batch Name / ID *</label>
                 <input type="text" value={setupData.name} onChange={e => setSetupData({...setupData, name: e.target.value})} placeholder="e.g., April Broilers" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none focus:ring-2 focus:ring-huku-orange" />
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Breed Type</label>
-                <select value={setupData.breed} onChange={e => setSetupData({...setupData, breed: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none">
+                <select value={setupData.breed} onChange={e => setSetupData({...setupData, breed: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none focus:ring-2 focus:ring-huku-orange">
                   <option>Broiler - Cobb 500</option>
                   <option>Broiler - Ross 308</option>
                   <option>Roadrunner (Sasso/Kuroiler)</option>
@@ -264,9 +320,14 @@ export default function ManagementTool() {
                   <option>Other</option>
                 </select>
               </div>
+              {/* 📅 NEW: Placement Date Input */}
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Placement Date *</label>
+                <input type="date" value={setupData.placementDate} onChange={e => setSetupData({...setupData, placementDate: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none focus:ring-2 focus:ring-huku-orange" />
+              </div>
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Number of Chicks *</label>
-                <input type="number" value={setupData.numChicks} onChange={e => setSetupData({...setupData, numChicks: e.target.value})} placeholder="e.g. 500" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none" />
+                <input type="number" value={setupData.numChicks} onChange={e => setSetupData({...setupData, numChicks: e.target.value})} placeholder="e.g. 500" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none focus:ring-2 focus:ring-huku-orange" />
               </div>
             </div>
           </div>
@@ -278,15 +339,15 @@ export default function ManagementTool() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Cost of Chicks ($)</label>
-                <input type="number" value={setupData.costChicks} onChange={e => setSetupData({...setupData, costChicks: e.target.value})} placeholder="0.00" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none" />
+                <input type="number" value={setupData.costChicks} onChange={e => setSetupData({...setupData, costChicks: e.target.value})} placeholder="0.00" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none focus:ring-2 focus:ring-huku-orange" />
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Est. Cost of Feed</label>
-                <input type="number" value={setupData.costFeed} onChange={e => setSetupData({...setupData, costFeed: e.target.value})} placeholder="0.00" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none" />
+                <input type="number" value={setupData.costFeed} onChange={e => setSetupData({...setupData, costFeed: e.target.value})} placeholder="0.00" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none focus:ring-2 focus:ring-huku-orange" />
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Heating & Bedding</label>
-                <input type="number" value={setupData.costHeating} onChange={e => setSetupData({...setupData, costHeating: e.target.value})} placeholder="0.00" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none" />
+                <input type="number" value={setupData.costHeating} onChange={e => setSetupData({...setupData, costHeating: e.target.value})} placeholder="0.00" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none focus:ring-2 focus:ring-huku-orange" />
               </div>
             </div>
             
@@ -301,6 +362,10 @@ export default function ManagementTool() {
       {/* 🔴 TAB 2: DAILY LOG */}
       {activeTab === 'log' && currentFlock && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+          
+          {/* 🕒 NEW: The Maturity Progress Card */}
+          <MaturityCard placementDate={currentFlock.placementDate} breed={currentFlock.breed} />
+
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
@@ -315,7 +380,7 @@ export default function ManagementTool() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold text-slate-500 uppercase">Feed Stage</label>
-                    <select value={logData.feedStage} onChange={e => setLogData({...logData, feedStage: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none">
+                    <select value={logData.feedStage} onChange={e => setLogData({...logData, feedStage: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none focus:ring-2 focus:ring-huku-orange">
                       <option>Starter</option><option>Grower</option><option>Finisher</option>
                     </select>
                   </div>
@@ -328,7 +393,7 @@ export default function ManagementTool() {
                   <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
                     <Scale size={14} /> Weekly Sample Weight (grams)
                   </label>
-                  <input type="number" value={logData.sampleWeight} onChange={e => setLogData({...logData, sampleWeight: e.target.value})} placeholder="e.g., 1200" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none" />
+                  <input type="number" value={logData.sampleWeight} onChange={e => setLogData({...logData, sampleWeight: e.target.value})} placeholder="e.g., 1200" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 outline-none focus:ring-2 focus:ring-huku-orange" />
                 </div>
               </div>
 
@@ -338,18 +403,17 @@ export default function ManagementTool() {
                   <label className="text-xs font-bold text-red-800 uppercase flex items-center gap-2">
                     <AlertTriangle size={14} /> Daily Mortality Count
                   </label>
-                  <input type="number" value={logData.mortalityCount} onChange={e => setLogData({...logData, mortalityCount: e.target.value})} placeholder="0" className="w-full p-3 bg-white border border-red-200 rounded-xl mt-1 outline-none text-red-600 font-bold" />
+                  <input type="number" value={logData.mortalityCount} onChange={e => setLogData({...logData, mortalityCount: e.target.value})} placeholder="0" className="w-full p-3 bg-white border border-red-200 rounded-xl mt-1 outline-none text-red-600 font-bold focus:ring-2 focus:ring-red-400" />
                 </div>
                 
                 <div>
                   <label className="text-xs font-bold text-red-800 uppercase flex items-center gap-2">
                     <Camera size={14} /> Mortality Photo Evidence
                   </label>
-                  {/* 📸 NEW: Hidden file input to trigger the device camera */}
                   <input 
                     type="file" 
                     accept="image/*" 
-                    capture="environment" // Forces the rear camera to open on mobile
+                    capture="environment" 
                     className="hidden" 
                     ref={fileInputRef} 
                     onChange={handleImageUpload} 
