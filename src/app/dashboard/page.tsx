@@ -30,17 +30,28 @@ export default function Dashboard() {
 
       getUserProfile(currentUser.uid).then((profile) => {
         setUserProfile(profile);
+        
+        // ⏱️ NEW: Calculate exact days left based on the database expiration stamp
+        if (profile?.subscriptionExpiryDate) {
+          const expiry = new Date(profile.subscriptionExpiryDate);
+          const now = new Date();
+          const diffTime = expiry.getTime() - now.getTime();
+          const remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          setDaysLeftInTrial(remainingDays > 0 ? remainingDays : 0);
+          setIsTrialActive(remainingDays > 0 && profile.subscriptionStatus === 'trial');
+        } 
+        // 🛡️ FALLBACK: For old accounts before we added the expiry stamp (Assumes 90 days from creation)
+        else if (currentUser.metadata?.creationTime) {
+          const signupDate = new Date(currentUser.metadata.creationTime);
+          const now = new Date();
+          const diffDays = Math.floor((now.getTime() - signupDate.getTime()) / (1000 * 60 * 60 * 24));
+          const remaining = 90 - diffDays;
+          setDaysLeftInTrial(remaining > 0 ? remaining : 0);
+          setIsTrialActive(remaining > 0 && profile?.subscriptionStatus !== 'active');
+        }
       });
 
-      const creationTime = currentUser?.metadata?.creationTime;
-      if (creationTime) {
-        const signupDate = new Date(creationTime);
-        const now = new Date();
-        const diffDays = Math.floor((now.getTime() - signupDate.getTime()) / (1000 * 60 * 60 * 24));
-        const remaining = 90 - diffDays;
-        setDaysLeftInTrial(remaining);
-        setIsTrialActive(remaining > 0 && remaining <= 90);
-      }
       return () => unsubscribe();
     }
   }, [currentUser]);
@@ -79,7 +90,6 @@ export default function Dashboard() {
   
   // Track metrics across ALL batches (including sold out ones)
   const totalInquiries = batches.reduce((acc, b) => acc + (b.inquiries || 0), 0);
-  // Assuming you save "soldCount" when they use the RecordSaleModal. If not, this defaults to 0.
   const totalSold = batches.reduce((acc, b) => acc + (b.soldCount || 0), 0); 
   const estimatedRevenue = batches.reduce((acc, b) => acc + ((b.soldCount || 0) * b.pricePerBird), 0);
 
