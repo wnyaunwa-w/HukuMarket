@@ -48,12 +48,19 @@ export default function Signup() {
     try {
       const userCredential = await signup(finalEmail, finalPassword);
       
+      // ⏱️ NEW: Calculate exact 30-day trial expiry dates
+      const startDate = new Date();
+      const expiryDate = new Date();
+      expiryDate.setDate(startDate.getDate() + 30);
+      
       await updateUserProfile(userCredential.user.uid, {
         displayName: name,
         phone: signupMode === 'phone' ? formatPhone(phone) : null,
         email: signupMode === 'email' ? email : null,
         isVerified: false,
         subscriptionStatus: "trial",
+        subscriptionStartDate: startDate.toISOString(),   // 👈 Stamps the start date
+        subscriptionExpiryDate: expiryDate.toISOString(), // 👈 Stamps the hard 30-day expiry
         role: "farmer"
       });
 
@@ -70,11 +77,20 @@ export default function Signup() {
     try {
       setLoading(true);
       const cred = await loginWithGoogle();
+      
+      // ⏱️ NEW: Calculate exact 30-day trial expiry dates for Google signups too
+      const startDate = new Date();
+      const expiryDate = new Date();
+      expiryDate.setDate(startDate.getDate() + 30);
+
       await updateUserProfile(cred.user.uid, {
         displayName: cred.user.displayName || "Farmer",
         email: cred.user.email,
         isVerified: false,
-        subscriptionStatus: "trial"
+        subscriptionStatus: "trial",
+        subscriptionStartDate: startDate.toISOString(),   // 👈 Stamps the start date
+        subscriptionExpiryDate: expiryDate.toISOString(), // 👈 Stamps the hard 30-day expiry
+        role: "farmer"
       });
       router.push("/dashboard");
     } catch (err) {
@@ -137,7 +153,6 @@ export default function Signup() {
             </>
           )}
 
-          {/* 👈 PERMANENT TERMS & CONDITIONS CHECKBOX */}
           <div className="flex items-start gap-3 mt-6 bg-slate-50 p-3 rounded-xl border border-slate-100">
             <div className="flex-shrink-0 mt-0.5">
               <input 
