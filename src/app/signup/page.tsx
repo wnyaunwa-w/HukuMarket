@@ -153,6 +153,7 @@ export default function Signup() {
             </>
           )}
 
+          {/* 👈 UPDATED TERMS & CONDITIONS LINKS WITH TARGET BLANK */}
           <div className="flex items-start gap-3 mt-6 bg-slate-50 p-3 rounded-xl border border-slate-100">
             <div className="flex-shrink-0 mt-0.5">
               <input 
@@ -163,7 +164,7 @@ export default function Signup() {
               />
             </div>
             <p className="text-xs text-slate-500 leading-snug">
-              By creating an account, you acknowledge and agree to HukuMarket's <a href="#" className="font-bold underline text-slate-700 hover:text-huku-orange">Terms & Conditions</a> and <a href="#" className="font-bold underline text-slate-700 hover:text-huku-orange">Privacy Policy</a>.
+              By creating an account, you acknowledge and agree to HukuMarket's <Link href="/terms" target="_blank" className="font-bold underline text-slate-700 hover:text-huku-orange">Terms & Conditions</Link> and <Link href="/privacy" target="_blank" className="font-bold underline text-slate-700 hover:text-huku-orange">Privacy Policy</Link>.
             </p>
           </div>
 
