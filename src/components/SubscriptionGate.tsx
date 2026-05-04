@@ -12,8 +12,8 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   
-  // Admin Phone State for the Paywall
-  const [adminPhone, setAdminPhone] = useState("+263 77 123 4567");
+  // 📱 UPDATED: Admin Phone State for the Paywall
+  const [adminPhone, setAdminPhone] = useState("+263 78 456 7174");
 
   useEffect(() => {
     async function checkAccess() {
@@ -33,12 +33,15 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
 
         const profile = await getUserProfile(currentUser.uid);
 
-        // 1. ⏱️ Calculate the 90-Day "Pioneer" Trial
-        const creationTime = currentUser.metadata?.creationTime;
+        // 1. ⏱️ Calculate Trial Status (Now dynamically supports 30 & 90 day users!)
         let isTrialActive = false;
-
-        if (creationTime) {
-          const signupDate = new Date(creationTime);
+        
+        if (profile?.subscriptionExpiryDate) {
+          const expiry = new Date(profile.subscriptionExpiryDate);
+          isTrialActive = expiry.getTime() > new Date().getTime();
+        } else if (currentUser.metadata?.creationTime) {
+          // Fallback strictly for the earliest users before the database stamp was added
+          const signupDate = new Date(currentUser.metadata.creationTime);
           const now = new Date();
           const diffTime = now.getTime() - signupDate.getTime();
           const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -112,7 +115,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
         
         <h2 className="text-2xl font-black text-slate-900 mb-2">Activate Your Seller Account</h2>
         <p className="text-slate-500 mb-8 leading-relaxed text-sm">
-          Your 90-day Pioneer Promo has completed. To continue selling your birds on HukuMarket, you need an active subscription.
+          Your free trial has completed. To continue selling your birds and tracking your flocks on HukuMarket, you need an active subscription.
         </p>
 
         {/* The "Monthly Producer Plan" Card */}
@@ -136,6 +139,11 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
             <li className="flex items-start gap-2 text-sm text-slate-700">
               <CheckCircle2 size={18} className="text-green-500 shrink-0" />
               <span className="font-medium">Dashboard sales tracking</span>
+            </li>
+            {/* 👈 NEW FEATURE ADDED HERE */}
+            <li className="flex items-start gap-2 text-sm text-slate-700">
+              <CheckCircle2 size={18} className="text-green-500 shrink-0" />
+              <span className="font-medium">Huku Daily Management Tool</span>
             </li>
           </ul>
 
