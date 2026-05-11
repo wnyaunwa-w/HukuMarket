@@ -15,7 +15,10 @@ export default function VerifyBadgePage() {
   const [error, setError] = useState("");
   
   // Admin Phone State
-  const [adminPhone, setAdminPhone] = useState("+263 77 123 4567");
+  const [adminPhone, setAdminPhone] = useState("+263 78 456 7174"); // Updated to match your default
+
+  // User's Own Phone Number State for WhatsApp Message
+  const [userPhone, setUserPhone] = useState("");
 
   // Form State
   const [fullName, setFullName] = useState("");
@@ -26,10 +29,16 @@ export default function VerifyBadgePage() {
   useEffect(() => {
     async function fetchVerificationStatus() {
       if (currentUser) {
-        // 1. Fetch User Status
+        // 1. Fetch User Status & Phone Number
         const userDoc = await getDoc(doc(db, "users", currentUser.uid));
         if (userDoc.exists()) {
           const data = userDoc.data();
+          
+          // Grab their phone number for the WhatsApp message
+          if (data.phone || data.phoneNumber) {
+             setUserPhone(data.phone || data.phoneNumber);
+          }
+
           if (data.isVerified) {
             setStatus("verified");
           } else if (data.verificationStatus) {
@@ -62,8 +71,10 @@ export default function VerifyBadgePage() {
   if (cleanAdminPhone.startsWith("0")) {
     cleanAdminPhone = "263" + cleanAdminPhone.substring(1);
   }
-  // 👈 UPDATED TO $10
-  const waMessage = encodeURIComponent(`Hello, I have submitted my KYC details for the Verified Badge. My email is ${currentUser?.email}. Here is my $10 proof of payment:`);
+  
+  // 👈 UPDATED: Now uses the user's phone number instead of email!
+  const identifier = userPhone || currentUser?.email || "Unknown";
+  const waMessage = encodeURIComponent(`Hello, I have submitted my KYC details for the Verified Badge. My phone number is ${identifier}. Here is my $10 proof of payment:`);
   const whatsappLink = `https://wa.me/${cleanAdminPhone}?text=${waMessage}`;
 
 
@@ -111,7 +122,7 @@ export default function VerifyBadgePage() {
 
   if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-huku-orange" /></div>;
 
-  // VIEW 1: PENDING APPROVAL (👈 UPDATED WITH MANUAL BUTTON)
+  // VIEW 1: PENDING APPROVAL
   if (status === "pending_admin_approval") {
     return (
       <div className="max-w-2xl mx-auto text-center p-8 bg-white rounded-3xl border border-slate-100 shadow-sm mt-8 animate-in fade-in zoom-in duration-300">
@@ -125,7 +136,6 @@ export default function VerifyBadgePage() {
         
         <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-6">
           <h4 className="font-bold text-slate-900 mb-2">Final Step: Send Payment Proof</h4>
-          {/* 👈 UPDATED TO $10 */}
           <p className="text-sm text-slate-600 mb-4">
             We can only process your verification after receiving your <strong>$10 Annual Fee</strong> payment proof.
           </p>
@@ -165,7 +175,6 @@ export default function VerifyBadgePage() {
         <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
           <BadgeCheck className="text-blue-500" /> Apply for Verification
         </h1>
-        {/* 👈 UPDATED TO $10 */}
         <p className="text-slate-500 mt-2">
           Earn the blue Verified Badge to build trust with buyers. Verification requires an identity check and a $10 annual fee.
         </p>
@@ -236,7 +245,6 @@ export default function VerifyBadgePage() {
 
         <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
           <h4 className="font-bold text-slate-900 mb-2">Payment Required</h4>
-          {/* 👈 UPDATED TO $10 */}
           <p className="text-sm text-slate-600 mb-3">
             To complete your application, please send the <strong>$10 Annual Fee</strong> via Innbucks or EcoCash to: <strong className="text-slate-900">{adminPhone}</strong>
           </p>
@@ -250,7 +258,6 @@ export default function VerifyBadgePage() {
           disabled={submitting}
           className="w-full bg-slate-900 hover:bg-slate-800 text-white p-4 rounded-2xl font-black text-lg shadow-lg shadow-slate-200 transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
         >
-          {/* 👈 UPDATED TO $10 */}
           {submitting ? <Loader2 className="animate-spin" /> : "Submit & Pay $10"}
         </button>
 
