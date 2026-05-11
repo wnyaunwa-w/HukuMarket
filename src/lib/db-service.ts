@@ -335,10 +335,31 @@ export async function toggleUserBlock(userId: string, isBlocked: boolean) {
   }
 }
 
+// 🚨 FIXED: STRICT 1-YEAR VERIFICATION BADGE
 export async function toggleUserVerification(userId: string, isVerified: boolean) {
   try {
     const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, { isVerified: isVerified });
+    
+    if (isVerified) {
+      // ⏱️ NEW: If approving, stamp a strict 1-year (365 days) expiration date
+      const startDate = new Date();
+      const expiryDate = new Date();
+      expiryDate.setDate(startDate.getDate() + 365);
+      
+      await updateDoc(userRef, { 
+        isVerified: true,
+        verificationStartDate: startDate.toISOString(),
+        verificationExpiryDate: expiryDate.toISOString()
+      });
+    } else {
+      // 🛑 If revoking/unverifying, turn it off and clear the dates
+      await updateDoc(userRef, { 
+        isVerified: false,
+        verificationStartDate: null,
+        verificationExpiryDate: null
+      });
+    }
+    
     return true;
   } catch (error) {
     console.error("Error toggling verification:", error);
