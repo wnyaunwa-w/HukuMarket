@@ -192,6 +192,40 @@ export default function ManagementTool() {
     }
   };
 
+  // 💬 NEW: Formatted WhatsApp Sharing Logic
+  const shareToWhatsApp = (log: any, currentDay: number) => {
+    const flock = activeFlocks.find(f => f.id === selectedFlockId);
+    if (!flock) return;
+
+    let reportText = `📊 *HukuMarket Daily Report*\n`;
+    reportText += `🐔 *Batch:* ${flock.name}\n`;
+    reportText += `📅 *Day:* ${currentDay}\n`;
+    reportText += `🌾 *Feed Consumed:* ${log.feedQuantity}kg (${log.feedStage})\n`;
+    
+    if (log.sampleWeight > 0) {
+      reportText += `⚖️ *Sample Weight:* ${log.sampleWeight}g\n`;
+    }
+
+    if (log.mortalityCount > 0) {
+      reportText += `🚨 *Mortality:* ${log.mortalityCount} bird(s)\n`;
+    }
+
+    // Embed the photo link directly into the WhatsApp message
+    if (log.photoUrl) {
+      reportText += `📸 *Mortality Evidence:* ${log.photoUrl}\n`;
+    }
+
+    reportText += `\n_Sent via HukuMarket Management Tool_`;
+
+    const encodedText = encodeURIComponent(reportText);
+    
+    // Using window.location.assign is much safer for bypassing mobile pop-up blockers when opening wa.me links
+    const success = window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+    if (!success) {
+      window.location.assign(`https://wa.me/?text=${encodedText}`);
+    }
+  };
+
   const handleSaveLog = async () => {
     if (!selectedFlockId) return alert("Please select a batch first!");
     if (!logData.feedQuantity) return alert("Please enter the daily feed consumed.");
@@ -204,13 +238,18 @@ export default function ManagementTool() {
         sampleWeight: Number(logData.sampleWeight || 0),
         mortalityCount: Number(logData.mortalityCount || 0),
       };
+      
+      // Calculate day *before* the async save to prevent state race conditions
+      const currentDay = logs.length + 1;
+
       await addDailyLog(selectedFlockId, numericLog);
       
       const updatedLogs = await getFlockLogs(selectedFlockId);
       setLogs(updatedLogs);
       
-      if (confirm("Daily record saved! Would you like to share this report via WhatsApp?")) {
-        shareToWhatsApp(numericLog, updatedLogs.length);
+      // Trigger the prompt and instantly fire the WhatsApp sharing bypass
+      if (window.confirm("Daily record saved! Would you like to share this report via WhatsApp?")) {
+        shareToWhatsApp(numericLog, currentDay);
       }
       
       setLogData(defaultLog);
@@ -221,20 +260,6 @@ export default function ManagementTool() {
     }
   };
 
-  const shareToWhatsApp = (log: any, currentDay: number) => {
-    const flock = activeFlocks.find(f => f.id === selectedFlockId);
-    if (!flock) return;
-
-    const photoNote = log.photoUrl ? `\n*Photo Evidence:* ${log.photoUrl}` : "";
-    
-    const text = `🐔 *Daily Farm Report*\nBatch: ${flock.name}\nDay: ${currentDay}\n\n*Mortality:* ${log.mortalityCount}${photoNote}\n*Feed Stage:* ${log.feedStage}\n*Feed Consumed:* ${log.feedQuantity}kg\n*Avg Weight:* ${log.sampleWeight}g\n\n_Sent via HukuMarket Management_`;
-
-    if (navigator.share) {
-      navigator.share({ title: 'Farm Report', text: text }).catch(console.error);
-    } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-    }
-  };
 
   const currentFlock = activeFlocks.find(f => f.id === selectedFlockId);
   const totalInputCosts = currentFlock ? (currentFlock.costChicks + currentFlock.costFeed + currentFlock.costHeating + currentFlock.costBedding + currentFlock.costLabour) : 0;
