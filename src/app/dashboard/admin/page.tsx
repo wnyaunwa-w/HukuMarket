@@ -69,7 +69,6 @@ export default function AdminPage() {
       const allUsers = usersData as any[]; 
       const allBatches = batchesData as any[];
       
-      // 👈 NEW: Extract all lead data so we can map it to individual farmers
       const leadsData = leadsSnapshot.docs ? leadsSnapshot.docs.map(doc => doc.data()) : [];
       const totalLeadsCount = leadsData.length;
 
@@ -80,13 +79,12 @@ export default function AdminPage() {
       
       const usersWithCounts = allUsers.map(user => {
         const userBatches = allBatches.filter(batch => batch.userId === user.id);
-        // 👈 NEW: Count how many leads belong to this specific user
         const userLeads = leadsData.filter(lead => lead.farmerId === user.id);
         
         return {
           ...user,
           listingCount: userBatches.length,
-          leadCount: userLeads.length // Add it to the user object
+          leadCount: userLeads.length 
         };
       });
 
@@ -141,7 +139,6 @@ export default function AdminPage() {
   };
 
   const downloadCSV = () => {
-    // 👈 UPDATED CSV: Now includes the Leads column
     const headers = ["Name,Email,Phone,Role,Listings,Buyer Leads,Subscription Status,Blocked Status"];
     const rows = users.map(u => 
       `"${u.displayName || ''}","${u.email || ''}","${u.phone || u.phoneNumber || 'N/A'}","${u.role || 'farmer'}","${u.listingCount || 0}","${u.leadCount || 0}","${u.subscriptionStatus || 'N/A'}","${u.isBlocked ? 'Yes' : 'No'}"`
@@ -156,7 +153,8 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
-  const pendingFarmers = users.filter(u => (u.role === 'farmer' || !u.role) && u.subscriptionStatus === 'inactive');
+  // 🚨 UPDATED: Now directly hunts for the "pending" status!
+  const pendingFarmers = users.filter(u => (u.role === 'farmer' || !u.role) && u.subscriptionStatus === 'pending');
   
   const filteredUsers = users.filter(u => {
     const search = searchTerm.toLowerCase();
@@ -310,7 +308,7 @@ export default function AdminPage() {
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
            <h3 className="font-bold text-slate-700 flex items-center gap-2">
              <AlertCircle size={20} className="text-orange-500"/> 
-             Pending Activations
+             Pending Subscriptions
            </h3>
            
            {pendingFarmers.length === 0 ? (
@@ -332,7 +330,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <button 
-                      onClick={() => handleToggleSubscription(user.id, 'inactive')}
+                      onClick={() => handleToggleSubscription(user.id, user.subscriptionStatus)}
                       className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition"
                     >
                       <CheckCircle size={16} /> Activate
@@ -378,7 +376,7 @@ export default function AdminPage() {
                   <th className="p-4">Phone</th>
                   <th className="p-4">Role</th>
                   <th className="p-4">Listings</th>
-                  <th className="p-4">Leads</th> {/* 👈 NEW COLUMN HEADER */}
+                  <th className="p-4">Leads</th>
                   <th className="p-4">Sub. Status</th>
                   <th className="p-4 text-center">Security Actions</th>
                 </tr>
@@ -416,7 +414,6 @@ export default function AdminPage() {
                       )}
                     </td>
 
-                    {/* 👈 NEW COLUMN DATA: Shows how many leads this farmer got */}
                     <td className="p-4">
                       {user.role === 'admin' ? (
                         <span className="text-slate-300">-</span>
@@ -431,8 +428,16 @@ export default function AdminPage() {
 
                     <td className="p-4">
                       {user.role !== 'admin' ? (
-                        <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold w-fit ${user.subscriptionStatus === 'active' ? 'bg-green-100 text-green-700' : (user.subscriptionStatus === 'trial' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-500')}`}>
-                          <div className={`w-2 h-2 rounded-full ${user.subscriptionStatus === 'active' ? 'bg-green-500' : (user.subscriptionStatus === 'trial' ? 'bg-purple-500' : 'bg-slate-400')}`} />
+                        <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold w-fit ${
+                          user.subscriptionStatus === 'active' ? 'bg-green-100 text-green-700' : 
+                          (user.subscriptionStatus === 'trial' ? 'bg-purple-100 text-purple-700' : 
+                          (user.subscriptionStatus === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-500'))
+                        }`}>
+                          <div className={`w-2 h-2 rounded-full ${
+                            user.subscriptionStatus === 'active' ? 'bg-green-500' : 
+                            (user.subscriptionStatus === 'trial' ? 'bg-purple-500' : 
+                            (user.subscriptionStatus === 'pending' ? 'bg-orange-500' : 'bg-slate-400'))
+                          }`} />
                           {user.subscriptionStatus?.toUpperCase() || 'INACTIVE'}
                         </span>
                       ) : (

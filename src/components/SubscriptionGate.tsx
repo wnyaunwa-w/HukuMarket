@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getUserProfile } from "@/lib/db-service";
-import { collection, query, where, getDocs } from "firebase/firestore"; 
+import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
 import { Loader2, Lock, Sparkles, CheckCircle2 } from "lucide-react";
 
@@ -11,6 +11,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   
   // 📱 UPDATED: Admin Phone State for the Paywall
   const [adminPhone, setAdminPhone] = useState("+263 78 456 7174");
@@ -24,7 +25,6 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
 
       try {
         // 🚨 CRITICAL FIX: THE SUPER ADMIN BYPASS 🚨
-        // If it is you, skip all checks and instantly open the gate!
         if (currentUser.email === "wnyaunwa@gmail.com") {
           setHasAccess(true);
           setLoading(false);
@@ -33,14 +33,18 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
 
         const profile = await getUserProfile(currentUser.uid);
 
-        // 1. ⏱️ Calculate Trial Status (Now dynamically supports 30 & 90 day users!)
+        // Check if already pending so we can change the UI text
+        if (profile?.subscriptionStatus === "pending") {
+          setIsPending(true);
+        }
+
+        // 1. ⏱️ Calculate Trial Status
         let isTrialActive = false;
         
         if (profile?.subscriptionExpiryDate) {
           const expiry = new Date(profile.subscriptionExpiryDate);
           isTrialActive = expiry.getTime() > new Date().getTime();
         } else if (currentUser.metadata?.creationTime) {
-          // Fallback strictly for the earliest users before the database stamp was added
           const signupDate = new Date(currentUser.metadata.creationTime);
           const now = new Date();
           const diffTime = now.getTime() - signupDate.getTime();
@@ -140,7 +144,6 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
               <CheckCircle2 size={18} className="text-green-500 shrink-0" />
               <span className="font-medium">Dashboard sales tracking</span>
             </li>
-            {/* 👈 NEW FEATURE ADDED HERE */}
             <li className="flex items-start gap-2 text-sm text-slate-700">
               <CheckCircle2 size={18} className="text-green-500 shrink-0" />
               <span className="font-medium">Huku Daily Management Tool</span>
@@ -157,15 +160,39 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* WhatsApp Action Button */}
-        <a 
-          href={whatsappLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full bg-green-500 text-white font-bold py-4 rounded-xl hover:bg-green-600 transition shadow-lg shadow-green-200"
+        {/* WhatsApp Action Button with Database Update */}
+        <button 
+          onClick={async () => {
+            try {
+              // 1. Tell the database this user is pending approval!
+              if (currentUser?.uid) {
+                const userRef = doc(db, "users", currentUser.uid);
+                await updateDoc(userRef, { subscriptionStatus: "pending" });
+                setIsPending(true); // Update local state so button text changes
+              }
+              // 2. Open WhatsApp for them to send the proof
+              window.open(whatsappLink, "_blank");
+              
+              // 3. Give them a quick alert so they know the app registered it
+              alert("Notification sent to Admin! Please complete the WhatsApp message with your proof of payment.");
+            } catch (err) {
+              console.error("Failed to update status", err);
+              window.open(whatsappLink, "_blank"); // Fallback to open WhatsApp anyway
+            }
+          }}
+          className={`block w-full text-white font-bold py-4 rounded-xl transition shadow-lg ${
+            isPending 
+              ? "bg-slate-800 hover:bg-slate-900 shadow-slate-200" 
+              : "bg-green-500 hover:bg-green-600 shadow-green-200"
+          }`}
         >
-          Send Proof of Payment
-        </a>
+          {isPending ? "Resend Proof of Payment" : "Send Proof of Payment"}
+        </button>
+        {isPending && (
+          <p className="text-xs text-slate-500 text-center mt-3 font-medium">
+            ⏳ Your payment is currently under review by an admin.
+          </p>
+        )}
       </div>
     </div>
   );
