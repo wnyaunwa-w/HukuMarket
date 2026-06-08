@@ -153,7 +153,6 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
-  // 🚨 UPDATED: Now directly hunts for the "pending" status!
   const pendingFarmers = users.filter(u => (u.role === 'farmer' || !u.role) && u.subscriptionStatus === 'pending');
   
   const filteredUsers = users.filter(u => {
@@ -446,6 +445,23 @@ export default function AdminPage() {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-center gap-2">
+                        
+                        {/* 👈 NEW: Manual Force-Activate/Deactivate Button */}
+                        {user.role !== 'admin' && (
+                          <button 
+                            onClick={() => handleToggleSubscription(user.id, user.subscriptionStatus)}
+                            title={user.subscriptionStatus === 'active' ? "Deactivate Subscription" : "Force Activate Subscription"}
+                            className={`p-2 rounded-lg transition ${
+                              user.subscriptionStatus === 'active' 
+                              ? "bg-slate-100 text-slate-400 hover:bg-slate-200" 
+                              : "bg-green-100 text-green-600 hover:bg-green-200"
+                            }`}
+                          >
+                            <CheckCircle size={16} />
+                          </button>
+                        )}
+
+                        {/* Existing Block Button */}
                         <button 
                           onClick={() => handleBlockUser(user.id, user.isBlocked)}
                           title={user.isBlocked ? "Unblock User" : "Block User"}
@@ -458,6 +474,7 @@ export default function AdminPage() {
                           {user.isBlocked ? <Unlock size={16} /> : <Ban size={16} />}
                         </button>
                         
+                        {/* Existing Delete Button */}
                         <button 
                           onClick={() => handleDeleteUser(user.id)}
                           title="Delete User"
